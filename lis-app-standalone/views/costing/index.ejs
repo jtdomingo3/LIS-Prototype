@@ -3,7 +3,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
         <div>
             <h2 style="margin: 0; font-size: 1.6rem; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <span>💰</span> Financial Costing & Analytics
+                <i class="fa fa-chart-line" style="margin-right:6px; color:#10b981;"></i> Financial Costing & Analytics
             </h2>
             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
                 Track overall lab earnings, reagent usage costs, operational expenses, and monthly profitability
@@ -17,22 +17,22 @@
             </form>
 
             <a href="/costing/monthly/<%= selectedMonth %>" class="btn btn-secondary btn-small" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600;">
-                <span>📄</span> P&L Statement
+                <i class="fa fa-file-invoice" style="margin-right:4px;"></i> P&L Statement
             </a>
 
             <div class="dropdown" style="position: relative; display: inline-block;">
                 <button class="btn btn-primary btn-small" onclick="document.getElementById('exportMenu').classList.toggle('show')" style="padding: 8px 14px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>📥</span> Export Report ▾
+                    <i class="fa fa-download" style="margin-right:4px;"></i> Export Report &blacktriangledown;
                 </button>
                 <div id="exportMenu" style="display: none; position: absolute; right: 0; top: 105%; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; min-width: 170px; overflow: hidden;">
-                    <a href="/costing/export/excel?month=<%= selectedMonth %>&type=pnl" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;">📊 P&L Excel (.xlsx)</a>
-                    <a href="/costing/export/csv?month=<%= selectedMonth %>&type=pnl" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;">📄 P&L CSV (.csv)</a>
-                    <a href="/costing/export/excel?month=<%= selectedMonth %>&type=expenses" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;">📋 Expenses Excel</a>
+                    <a href="/costing/export/excel?month=<%= selectedMonth %>&type=pnl" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;"><i class="fa fa-file-excel" style="margin-right:6px; color:#10b981;"></i> P&L Excel (.xlsx)</a>
+                    <a href="/costing/export/csv?month=<%= selectedMonth %>&type=pnl" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;"><i class="fa fa-file-csv" style="margin-right:6px; color:#0284c7;"></i> P&L CSV (.csv)</a>
+                    <a href="/costing/export/excel?month=<%= selectedMonth %>&type=expenses" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;"><i class="fa fa-file-excel" style="margin-right:6px; color:#f97316;"></i> Expenses Excel</a>
                 </div>
             </div>
 
             <a href="/costing/expenses" class="btn btn-small" style="padding: 8px 14px; background: #0f172a; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>➕</span> Manage Expenses
+                <i class="fa fa-receipt" style="margin-right:4px;"></i> Manage Expenses
             </a>
         </div>
     </div>
@@ -44,7 +44,7 @@
         <a href="/costing/expenses?month=<%= selectedMonth %>" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Expenses Log</a>
         <a href="/costing/cost-per-test" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Reagent Cost / Test (<%= costPerTestCount %>)</a>
         <a href="/costing/monthly/<%= selectedMonth %>" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Monthly P&L</a>
-        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: rgba(79, 70, 229, 0.1); color: #4f46e5; margin-left: auto;">👥 Personnel & Payroll Panel →</a>
+        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: rgba(16, 185, 129, 0.1); color: #059669; margin-left: auto;"><i class="fa fa-users" style="margin-right:4px;"></i> Personnel & Payroll Panel &rarr;</a>
     </div>
 
     <!-- 4 KPI Summary Cards -->
@@ -136,7 +136,7 @@
                 <div><span style="color:#ef4444;">●</span> Reagents: ₱<%= summary.categories.reagent_purchase.toLocaleString() %></div>
                 <div><span style="color:#3b82f6;">●</span> Personnel: ₱<%= summary.categories.personnel.toLocaleString() %></div>
                 <div><span style="color:#f59e0b;">●</span> Overhead: ₱<%= summary.categories.overhead.toLocaleString() %></div>
-                <div><span style="color:#8b5cf6;">●</span> Equipment: ₱<%= summary.categories.equipment_service.toLocaleString() %></div>
+                <div><span style="color:#0284c7;">●</span> Equipment: ₱<%= summary.categories.equipment_service.toLocaleString() %></div>
             </div>
         </div>
     </div>
@@ -322,7 +322,7 @@
                     categories.overhead || 0,
                     categories.misc || 0
                 ],
-                backgroundColor: ['#ef4444', '#8b5cf6', '#3b82f6', '#f59e0b', '#64748b'],
+                backgroundColor: ['#ef4444', '#0284c7', '#3b82f6', '#f59e0b', '#64748b'],
                 borderWidth: 2,
                 borderColor: '#ffffff'
             }]

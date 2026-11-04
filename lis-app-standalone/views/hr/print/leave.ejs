@@ -183,11 +183,11 @@
     <div style="display: flex; gap: 10px; align-items: center;">
       <% if (leave) { %>
         <span style="font-size: 0.78rem; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 6px; font-weight: 600;">
-          ✓ Leave Slip Generated • Ready to Print
+          Leave Slip Generated • Ready to Print
         </span>
       <% } %>
       <button onclick="window.print()" style="padding: 8px 20px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
-        <span>🖨️</span> Print Leave Slip
+        <i class="fa fa-print"></i> Print Leave Slip
       </button>
     </div>
   </div>
@@ -256,12 +256,12 @@
           <td style="padding: 10px 14px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 12.5px; margin-bottom: 8px; text-transform: uppercase;">Type of Leave Requested:</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 12px;">
-              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Vacation') ? '✓' : '' %></span> <strong>Vacation Leave (VL)</strong></div>
-              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Sick') ? '✓' : '' %></span> <strong>Sick Leave (SL)</strong></div>
-              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Emergency') ? '✓' : '' %></span> <strong>Emergency Leave</strong></div>
-              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Maternity') ? '✓' : '' %></span> <strong>Maternity Leave</strong></div>
-              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Paternity') ? '✓' : '' %></span> <strong>Paternity Leave</strong></div>
-              <div><span class="chk-box"><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '✓' : '' %></span> <strong>Bereavement / Other</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Vacation') ? '&#10003;' : '' %></span> <strong>Vacation Leave (VL)</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Sick') ? '&#10003;' : '' %></span> <strong>Sick Leave (SL)</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Emergency') ? '&#10003;' : '' %></span> <strong>Emergency Leave</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Maternity') ? '&#10003;' : '' %></span> <strong>Maternity Leave</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Paternity') ? '&#10003;' : '' %></span> <strong>Paternity Leave</strong></div>
+              <div><span class="chk-box"><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '&#10003;' : '' %></span> <strong>Bereavement / Other</strong></div>
             </div>
           </td>
           <td style="padding: 10px 14px; vertical-align: top; background: #fafafa;">
@@ -308,8 +308,8 @@
         <!-- Laboratory Owner Signature -->
         <div class="sig">
           <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 6px; font-size: 12px; font-weight: bold;">
-            <span><span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span> APPROVED</span>
-            <span><span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span> DISAPPROVED</span>
+            <span><span class="chk-box"><%= (leave && leave.status === 'Approved') ? '&#10003;' : '' %></span> APPROVED</span>
+            <span><span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '&#10003;' : '' %></span> DISAPPROVED</span>
           </div>
           <div style="height: 34px; position: relative;">
             <% if (owner && owner.signature) { %>

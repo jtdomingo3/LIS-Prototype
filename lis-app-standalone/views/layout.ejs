@@ -43,26 +43,52 @@
             /* Core Brand Colors - Gezyne Clinical Laboratory (Green, Orange, Black, White) */
             --primary-brand: #10b981; /* Emerald 500 */
             --primary-brand-dark: #059669; /* Emerald 600 */
+            --primary-brand-light: #34d399; /* Emerald 400 */
+            --primary-brand-subtle: #ecfdf5; /* Emerald 50 */
             --primary-black: #18181b; /* Zinc 900 */
             --primary-black-dark: #09090b; /* Zinc 950 */
             --secondary-green: #10b981; /* Emerald 500 */
             --secondary-green-dark: #059669; /* Emerald 600 */
             --accent-orange: #f97316; /* Orange 500 */
+            --accent-orange-dark: #ea580c; /* Orange 600 */
             --accent-orange-light: #fb923c; /* Orange 400 */
+            --accent-orange-subtle: #fff7ed; /* Orange 50 */
             
-            /* Text & Backgrounds */
+            /* Specialized Clinical Blue Tokens (Doctors, Clinic & PhilHealth/HMO) */
+            --clinical-blue: #0284c7; /* Sky 600 */
+            --clinical-blue-dark: #0369a1; /* Sky 700 */
+            --clinical-blue-light: #38bdf8; /* Sky 400 */
+            --clinical-blue-subtle: #f0f9ff; /* Sky 50 */
+            --clinical-blue-border: #bae6fd; /* Sky 200 */
+            --philhealth-blue: #0284c7;
+            --philhealth-blue-dark: #0369a1;
+            --philhealth-blue-subtle: #f0f9ff;
+            
+            /* Neutral Surfaces & Borders */
             --text-white: #ffffff;
             --text-light: #f8fafc;
             --text-gray: #71717a; /* Zinc 500 */
             --text-dark: #18181b; /* Zinc 900 */
             --bg-light: #f4f4f5; /* Zinc 100 */
             --border-gray: #e4e4e7; /* Zinc 200 */
+            --surface-app: #f4f4f5;
+            --surface-card: #ffffff;
+            --surface-muted: #f8fafc;
+            --surface-subtle: #f1f5f9;
+            --border-subtle: #e2e8f0;
+            --border-strong: #cbd5e1;
+            
+            /* Elevation & Motion */
+            --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.03);
+            --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.06);
+            --shadow-modal: 0 20px 40px -15px rgba(0, 0, 0, 0.25);
+            --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
             
             /* Semantic Colors */
             --success: #10b981; /* Emerald 500 */
             --warning: #f59e0b; /* Amber 500 */
             --danger: #ef4444; /* Red 500 */
-            --info: #10b981; /* Brand Green */
+            --info: #0284c7; /* Clinical Sky Blue */
             
             /* Base sizing */
             font-size: 14px;
@@ -663,6 +689,17 @@
             box-shadow: 0 6px 16px rgba(249, 115, 22, 0.3);
         }
 
+        .btn-blue {
+            background: linear-gradient(135deg, var(--clinical-blue) 0%, var(--clinical-blue-dark) 100%);
+            color: var(--text-white);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
+
+        .btn-blue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+        }
+
         .btn-small {
             padding: 8px 16px;
             font-size: 0.85em;
@@ -834,6 +871,12 @@
             border: 1px solid rgba(100, 116, 139, 0.2);
         }
 
+        .badge-blue {
+            background: rgba(2, 132, 199, 0.1);
+            color: var(--clinical-blue-dark);
+            border: 1px solid rgba(2, 132, 199, 0.25);
+        }
+
         .badge-dot {
             width: 6px;
             height: 6px;
@@ -846,7 +889,8 @@
         .badge-success .badge-dot { background: #10b981; }
         .badge-warning .badge-dot { background: #f59e0b; }
         .badge-danger .badge-dot { background: #ef4444; }
-        .badge-info .badge-dot { background: #10b981; }
+        .badge-info .badge-dot { background: #0284c7; }
+        .badge-blue .badge-dot { background: #0284c7; }
         .badge-progress .badge-dot { background: #f97316; }
         .badge-released .badge-dot { background: #64748b; }
 
@@ -915,6 +959,72 @@
             background: #eff6ff;
             color: #1e40af;
             border-color: #bfdbfe;
+        }
+
+        /* Unified Clinical Modal Framework */
+        .clinical-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .clinical-modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .clinical-modal-box {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            box-shadow: var(--shadow-modal);
+            width: 100%;
+            max-width: 540px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.96) translateY(8px);
+            transition: transform 0.2s var(--ease-spring);
+        }
+        .clinical-modal-backdrop.active .clinical-modal-box {
+            transform: scale(1) translateY(0);
+        }
+        .clinical-modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--surface-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .clinical-modal-header h3 {
+            margin: 0;
+            font-size: 1.15rem;
+            color: var(--primary-black);
+            font-weight: 700;
+        }
+        .clinical-modal-body {
+            padding: 22px;
+            font-size: 0.94rem;
+            color: #334155;
+            line-height: 1.6;
+        }
+        .clinical-modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--surface-subtle);
+            background: var(--surface-muted);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            border-radius: 0 0 16px 16px;
         }
 
         /* Utility */
@@ -1641,23 +1751,36 @@
                         const jsonStart = text.indexOf('{');
                         const prefix = text.substring(0, jsonStart).replace(/:$/, '').trim();
                         const parsed = JSON.parse(text.substring(jsonStart));
-                        if (parsed.action === 'stash') return '📥 Patient queue results stashed for quick release';
-                        if (parsed.action === 'release_stashed') return '📤 Stashed patient queue restored';
-                        if (parsed.action === 'clear_queues') return '🧹 Area queues cleared & numbers reset';
+                        if (parsed.action === 'stash') return 'Patient queue results stashed for quick release';
+                        if (parsed.action === 'release_stashed') return 'Stashed patient queue restored';
+                        if (parsed.action === 'clear_queues') return 'Area queues cleared & numbers reset';
                         if (parsed.action) {
                             const actionName = parsed.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                            return `ℹ️ ${actionName}${parsed.testId ? ' (ID: ' + parsed.testId + ')' : ''}`;
+                            return `${actionName}${parsed.testId ? ' (ID: ' + parsed.testId + ')' : ''}`;
                         }
-                        if (prefix) return `ℹ️ ${prefix.replace(/\b\w/g, l => l.toUpperCase())}`;
+                        if (prefix) return prefix.replace(/\b\w/g, l => l.toUpperCase());
                     } catch(e) {}
                 }
                 return text;
             }
 
+            function getNotifIcon(text) {
+                const lower = (text || '').toLowerCase();
+                if (lower.includes('patient registered') || lower.includes('patient created')) return '<i class="fa-solid fa-user-plus" style="color:var(--primary-brand);font-size:0.95rem;"></i>';
+                if (lower.includes('patient updated')) return '<i class="fa-solid fa-user-pen" style="color:var(--accent-orange);font-size:0.95rem;"></i>';
+                if (lower.includes('deleted') || lower.includes('removed')) return '<i class="fa-solid fa-trash-can" style="color:var(--danger);font-size:0.95rem;"></i>';
+                if (lower.includes('stashed') || lower.includes('stash')) return '<i class="fa-solid fa-box-archive" style="color:var(--accent-orange);font-size:0.95rem;"></i>';
+                if (lower.includes('released')) return '<i class="fa-solid fa-file-circle-check" style="color:var(--primary-brand);font-size:0.95rem;"></i>';
+                if (lower.includes('specimen') || lower.includes('test results') || lower.includes('encoded')) return '<i class="fa-solid fa-flask" style="color:var(--clinical-blue);font-size:0.95rem;"></i>';
+                if (lower.includes('assigned')) return '<i class="fa-solid fa-clipboard-user" style="color:var(--clinical-blue);font-size:0.95rem;"></i>';
+                if (lower.includes('inventory') || lower.includes('stock')) return '<i class="fa-solid fa-boxes-stacked" style="color:var(--accent-orange);font-size:0.95rem;"></i>';
+                return '<i class="fa-solid fa-circle-info" style="color:var(--clinical-blue);font-size:0.95rem;"></i>';
+            }
+
             function renderList(){
                 const n = getNotifs();
                 if (!n || !n.length) {
-                    list.innerHTML = '<div style="color:#94a3b8;padding:16px;text-align:center;font-size:0.88em;"><i class="fa fa-info-circle" style="margin-right:6px;opacity:0.6;"></i>No notifications yet</div>';
+                    list.innerHTML = '<div style="color:#94a3b8;padding:20px;text-align:center;font-size:0.88em;"><i class="fa-solid fa-circle-info" style="margin-right:6px;opacity:0.6;"></i>No notifications yet</div>';
                     return;
                 }
                 list.innerHTML = n.map(it => {
@@ -1665,10 +1788,16 @@
                     const dt = new Date(it.time);
                     const formattedTime = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     const formattedDate = dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                    return `<div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:0.88em;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                        <div style="font-weight:600;color:#1e293b;line-height:1.4;">${escapeHtml(cleanText)}</div>
-                        <div style="color:#94a3b8;font-size:0.78em;margin-top:4px;display:flex;align-items:center;gap:6px;">
-                            <i class="fa fa-clock" style="font-size:0.85em;"></i> ${formattedDate}, ${formattedTime}
+                    const iconHtml = getNotifIcon(cleanText);
+                    return `<div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:0.88em;display:flex;gap:12px;align-items:flex-start;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <div style="width:28px;height:28px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                            ${iconHtml}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;color:#1e293b;line-height:1.4;">${escapeHtml(cleanText)}</div>
+                            <div style="color:#94a3b8;font-size:0.78em;margin-top:3px;display:flex;align-items:center;gap:6px;font-family:var(--font-mono, monospace);">
+                                <i class="fa-solid fa-clock" style="font-size:0.8em;"></i> ${formattedDate}, ${formattedTime}
+                            </div>
                         </div>
                     </div>`;
                 }).join('');
@@ -1791,56 +1920,56 @@
                                 text = data.message;
                             } else if (data.action === 'stash') {
                                 const details = data.patientName ? ` for ${data.patientName}` : '';
-                                text = `📥 Stashed ${data.count || ''} patient result(s)${details}`;
+                                text = `Stashed ${data.count || ''} patient result(s)${details}`;
                             } else if (data.action === 'release_stashed') {
                                 const details = data.patientName ? ` for ${data.patientName}` : '';
-                                text = `📤 Released ${data.count || ''} stashed result(s)${details}`;
+                                text = `Released ${data.count || ''} stashed result(s)${details}`;
                             } else if (data.action === 'clear_queues') {
-                                text = `🧹 Area queues cleared & numbers reset`;
+                                text = `Area queues cleared & numbers reset`;
                             } else if (data.action === 'patient_created') {
-                                text = `👤 New Patient Registered: ${data.patientName || 'Patient'}`;
+                                text = `New Patient Registered: ${data.patientName || 'Patient'}`;
                                 if (data.patientIdLabel) text += ` (${data.patientIdLabel})`;
                                 else if (data.patientCode) text += ` (${data.patientCode})`;
                             } else if (data.action === 'patient_updated') {
-                                text = `✏️ Patient Updated: ${data.patientName || 'Patient'}`;
+                                text = `Patient Updated: ${data.patientName || 'Patient'}`;
                             } else if (data.action === 'patient_deleted') {
-                                text = `🗑️ Patient Deleted: ${data.patientName || 'Patient'}`;
+                                text = `Patient Deleted: ${data.patientName || 'Patient'}`;
                             } else if (data.action === 'test_deleted') {
-                                text = `🗑️ Test #${data.testId || ''} deleted`;
+                                text = `Test #${data.testId || ''} deleted`;
                             } else if (data.action === 'test_updated') {
-                                text = `✏️ Test #${data.testId || ''} updated`;
+                                text = `Test #${data.testId || ''} updated`;
                             } else if (data.action === 'assign' || data.action === 'assigned') {
                                 const pCode = data.patientCode || data.patientIdLabel || '';
                                 const testId = data.testId || (Array.isArray(data.tests) ? data.tests.map(t => t.testId || t.id).join(', ') : '');
-                                text = `📌 Patient assigned to ${data.area || 'Area'}: Test #${testId}`;
+                                text = `Patient assigned to ${data.area || 'Area'}: Test #${testId}`;
                                 if (pCode) text += ` (${pCode})`;
                                 if (data.assignedDoctor) text += ` • Dr. ${data.assignedDoctor}`;
                             } else if (data.action === 'complete') {
-                                text = `✅ Specimen Collection Completed for Test #${data.testId || ''}`;
+                                text = `Specimen Collection Completed for Test #${data.testId || ''}`;
                             } else if (data.action === 'result_encoded' || data.action === 'test_completed') {
-                                text = `🧪 Test Results Encoded & Completed (ID: ${data.testId || ''})`;
+                                text = `Test Results Encoded & Completed (ID: ${data.testId || ''})`;
                             } else if (data.action === 'release') {
-                                text = `📄 Laboratory Result Released for Test #${data.testId || ''}`;
+                                text = `Laboratory Result Released for Test #${data.testId || ''}`;
                             } else if (data.action === 'inventory_create') {
-                                text = `📦 New Inventory Item Added: ${data.name || ''}`;
+                                text = `New Inventory Item Added: ${data.name || ''}`;
                             } else if (data.action === 'inventory_update') {
-                                text = `✏️ Inventory Item Updated: ${data.name || ''}`;
+                                text = `Inventory Item Updated: ${data.name || ''}`;
                             } else if (data.action === 'inventory_delete') {
-                                text = `🗑️ Inventory Item Removed: ${data.name || ''}`;
+                                text = `Inventory Item Removed: ${data.name || ''}`;
                             } else if (data.action === 'inventory_stock') {
                                 const stockDir = data.delta > 0 ? `+${data.delta}` : `${data.delta}`;
-                                text = `📊 Stock Updated: ${data.name || ''} (${stockDir}) — Total: ${data.totalStock}`;
+                                text = `Stock Updated: ${data.name || ''} (${stockDir}) — Total: ${data.totalStock}`;
                             } else if (data.action === 'delete') {
-                                text = `🗑️ Test #${data.testId || ''} removed from queue`;
+                                text = `Test #${data.testId || ''} removed from queue`;
                             } else if (data.action === 'advert') {
-                                text = `📢 Kiosk Announcement Updated: ${data.ad || ''}`;
+                                text = `Kiosk Announcement Updated: ${data.ad || ''}`;
                             } else if (data.action === 'debug') {
-                                text = `⚙️ System Diagnostic: ${data.message || data.msg || 'OK'}`;
+                                text = `System Diagnostic: ${data.message || data.msg || 'OK'}`;
                             } else if (data.action) {
                                 const cleanAction = data.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                text = `ℹ️ ${cleanAction}${data.testId ? ' (ID: ' + data.testId + ')' : ''}`;
+                                text = `${cleanAction}${data.testId ? ' (ID: ' + data.testId + ')' : ''}`;
                             } else {
-                                text = `ℹ️ System Event Notification`;
+                                text = `System Event Notification`;
                             }
                             prependNotif(text);
                             // play sound (best-effort) unless muted

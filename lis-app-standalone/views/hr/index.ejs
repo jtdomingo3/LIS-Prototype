@@ -8,7 +8,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
         <div>
             <h2 style="margin: 0; font-size: 1.6rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <span style="background: #4f46e5; color: white; border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;">👥</span>
+                <span style="background: #059669; color: white; border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;"><i class="fa fa-users"></i></span>
                 HR & Payroll Management
             </h2>
             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
@@ -17,25 +17,25 @@
         </div>
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
-            <button type="button" onclick="openLabTaxModal()" class="btn btn-secondary" style="padding: 8px 16px; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                <span>🏛️</span> Tax &amp; BIR Settings
+            <button type="button" onclick="openLabTaxModal()" class="btn btn-secondary" style="padding: 8px 16px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa fa-building-columns"></i> Tax &amp; BIR Settings
             </button>
             <% } %>
-            <a href="/hr/payroll/compute" class="btn btn-primary" style="padding: 8px 16px; background: #4f46e5; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>⚡</span> Run Payroll
+            <a href="/hr/payroll/compute" class="btn btn-primary" style="padding: 8px 16px; background: #059669; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa fa-bolt"></i> Run Payroll
             </a>
             <a href="/hr/employees/new" class="btn btn-secondary" style="padding: 8px 16px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>➕</span> New Employee
+                <i class="fa fa-plus"></i> New Employee
             </a>
             <a href="/costing" class="btn" style="padding: 8px 16px; background: #0f172a; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>💰</span> Costing Panel →
+                <i class="fa fa-money-bill-wave" style="margin-right:4px;"></i> Costing Panel →
             </a>
         </div>
     </div>
 
     <!-- HR Navigation Bar with Indigo Identity -->
-    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e0e7ff; padding-bottom: 12px; overflow-x: auto;">
-        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #4f46e5; color: white;">Dashboard</a>
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #ecfdf5; padding-bottom: 12px; overflow-x: auto;">
+        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #059669; color: white;">Dashboard</a>
         <a href="/hr/employees" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Employees (<%= empTotal %>)</a>
         <a href="/hr/payroll" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Payroll Register</a>
         <a href="/hr/leaves" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">
@@ -43,16 +43,16 @@
         </a>
         <a href="/hr/documents" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Documents & Tax Forms</a>
         <a href="/hr/my/dtr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">⏱️ Time Records (DTR)</a>
-        <a href="/hr/my" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #4f46e5; margin-left: auto;">👤 View My Portal</a>
+        <a href="/hr/my" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #059669; margin-left: auto;"><i class="fa fa-user" style="margin-right:6px;"></i> View My Portal</a>
     </div>
 
     <!-- 4 Summary KPI Cards -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 28px;">
         <!-- Active Employees -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Active Headcount</span>
-                <span style="background: rgba(79, 70, 229, 0.12); color: #4f46e5; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Personnel</span>
+                <span style="background: rgba(5, 150, 105, 0.12); color: #059669; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Personnel</span>
             </div>
             <div style="font-size: 2rem; font-weight: 800; color: #1e1b4b;">
                 <%= activeEmployeesCount %> <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">/ <%= totalEmployees %> staff</span>
@@ -66,7 +66,7 @@
         </div>
 
         <!-- Monthly Payroll Projection / Actual -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase;">
                     <%= (recentPayrolls && recentPayrolls.length > 0) ? 'Processed Payroll' : 'Monthly Base Payroll' %>
@@ -84,7 +84,7 @@
         </div>
 
         <!-- Employer Gov Contributions -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Employer Gov Shares</span>
                 <span style="background: rgba(245, 158, 11, 0.12); color: #d97706; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Statutory</span>
@@ -98,12 +98,12 @@
         </div>
 
         <!-- Total Personnel Cost -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Full Personnel Cost</span>
-                <span style="background: rgba(79, 70, 229, 0.12); color: #4f46e5; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Total P&L</span>
+                <span style="background: rgba(5, 150, 105, 0.12); color: #059669; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Total P&L</span>
             </div>
-            <div style="font-size: 1.85rem; font-weight: 800; color: #4f46e5;">
+            <div style="font-size: 1.85rem; font-weight: 800; color: #059669;">
                 ₱<%= ((recentPayrolls && recentPayrolls.length > 0) ? actualMonthlyCost : (projectedMonthlyPayroll + totalEmployerContributions)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
@@ -118,17 +118,17 @@
         <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e1b4b;">Staff by Department</h3>
-                <a href="/hr/employees" style="font-size: 0.82rem; color: #4f46e5; font-weight: 600; text-decoration: none;">View Directory →</a>
+                <a href="/hr/employees" style="font-size: 0.82rem; color: #059669; font-weight: 600; text-decoration: none;">View Directory →</a>
             </div>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <% Object.entries(departmentCounts).forEach(([dept, count]) => { %>
                     <div>
                         <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 600; margin-bottom: 4px;">
                             <span style="color: #334155;"><%= dept %></span>
-                            <span style="color: #4f46e5;"><%= count %> staff</span>
+                            <span style="color: #059669;"><%= count %> staff</span>
                         </div>
                         <div style="background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden;">
-                            <div style="background: #4f46e5; height: 100%; width: <%= activeEmployeesCount > 0 ? (count / activeEmployeesCount) * 100 : 0 %>%;"></div>
+                            <div style="background: #059669; height: 100%; width: <%= activeEmployeesCount > 0 ? (count / activeEmployeesCount) * 100 : 0 %>%;"></div>
                         </div>
                     </div>
                 <% }) %>
@@ -142,12 +142,12 @@
         <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e1b4b;">Pending Leave Approvals</h3>
-                <a href="/hr/leaves" style="font-size: 0.82rem; color: #4f46e5; font-weight: 600; text-decoration: none;">All Leaves (<%= pendingLeavesCount %>) →</a>
+                <a href="/hr/leaves" style="font-size: 0.82rem; color: #059669; font-weight: 600; text-decoration: none;">All Leaves (<%= pendingLeavesCount %>) →</a>
             </div>
 
             <% if (pendingLeaves.length === 0) { %>
                 <div style="padding: 30px; text-align: center; color: #94a3b8; font-size: 0.9rem;">
-                    ✅ All leave requests are up to date. No pending approvals.
+                    <i class="fa fa-circle-check" style="color:#059669; margin-right:4px;"></i> All leave requests are up to date. No pending approvals.
                 </div>
             <% } else { %>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -161,9 +161,11 @@
                             </div>
                             <div style="display: flex; gap: 6px;">
                                 <form action="/hr/leaves/<%= l.id %>/approve" method="POST" style="display: inline;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                     <button type="submit" style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">Approve</button>
                                 </form>
                                 <form action="/hr/leaves/<%= l.id %>/reject" method="POST" style="display: inline;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                     <button type="submit" style="padding: 4px 10px; background: #ef4444; color: white; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">Reject</button>
                                 </form>
                             </div>
@@ -178,13 +180,13 @@
     <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e1b4b;">Recent Payroll Computations</h3>
-            <a href="/hr/payroll?month=all" style="font-size: 0.82rem; color: #4f46e5; font-weight: 600; text-decoration: none;">View All in Payroll Register →</a>
+            <a href="/hr/payroll?month=all" style="font-size: 0.82rem; color: #059669; font-weight: 600; text-decoration: none;">View All in Payroll Register →</a>
         </div>
         <% if (recentPayrolls.length === 0) { %>
             <div style="padding: 30px; text-align: center; color: #94a3b8; font-size: 0.9rem;">
                 No payroll calculated yet.
                 <div style="margin-top: 10px;">
-                    <a href="/hr/payroll/compute" style="color: #4f46e5; font-weight: 700;">+ Run Payroll Computation</a>
+                    <a href="/hr/payroll/compute" style="color: #059669; font-weight: 700;">+ Run Payroll Computation</a>
                 </div>
             </div>
         <% } else { %>
@@ -210,12 +212,12 @@
                                 <td style="padding: 10px 14px; text-align: right; color: #dc2626;">-₱<%= (Number(p.totalDeductions) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
                                 <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #059669;">₱<%= (Number(p.netPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
                                 <td style="padding: 10px 14px; text-align: center;">
-                                    <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; <%= p.status === 'Approved' ? 'background: #dcfce7; color: #166534;' : (p.status === 'Paid' ? 'background: #e0e7ff; color: #3730a3;' : 'background: #fef3c7; color: #92400e;') %>">
+                                    <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; <%= p.status === 'Approved' ? 'background: #dcfce7; color: #166534;' : (p.status === 'Paid' ? 'background: #ecfdf5; color: #065f46;' : 'background: #fef3c7; color: #92400e;') %>">
                                         <%= p.status %>
                                     </span>
                                 </td>
                                 <td style="padding: 10px 14px; text-align: center;">
-                                    <a href="/hr/payroll/<%= p.id %>" style="color: #4f46e5; text-decoration: none; font-weight: 600; font-size: 0.82rem;">Details →</a>
+                                    <a href="/hr/payroll/<%= p.id %>" style="color: #059669; text-decoration: none; font-weight: 600; font-size: 0.82rem;">Details →</a>
                                 </td>
                             </tr>
                         <% }) %>
@@ -232,7 +234,7 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 14px;">
                 <div>
                     <h3 style="margin: 0; font-size: 1.3rem; color: #1e1b4b; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-                        <span>🏛️</span> Laboratory Tax Profile &amp; Employee TINs
+                        <i class="fa fa-building-columns"></i> Laboratory Tax Profile &amp; Employee TINs
                     </h3>
                     <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
                         Configure official BIR details for Gezyne Clinical Laboratory and update employee tax numbers.
@@ -244,7 +246,7 @@
             <!-- Tab / Section 1: Laboratory Employer Tax Settings -->
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
                 <h4 style="margin: 0 0 12px 0; font-size: 0.95rem; color: #1e1b4b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                    <span>🏢</span> Laboratory BIR Employer Registration
+                    <span><i class="fa fa-building"></i></span> Laboratory BIR Employer Registration
                 </h4>
                 
                 <form id="labTaxForm" onsubmit="submitLabTaxSettings(event)">
@@ -279,7 +281,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span id="labTaxMsg" style="font-size: 0.82rem; font-weight: 600;"></span>
                         <button type="submit" id="btnSaveLabTax" style="padding: 8px 18px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.85rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
-                            💾 Save Lab Tax Profile
+                            <i class="fa fa-floppy-disk"></i> Save Lab Tax Profile
                         </button>
                     </div>
                 </form>
@@ -289,7 +291,7 @@
             <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <h4 style="margin: 0; font-size: 0.95rem; color: #1e1b4b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                        <span>👥</span> Employee BIR TIN Quick Manager
+                        <i class="fa fa-users"></i> Employee BIR TIN Quick Manager
                     </h4>
                     <span style="font-size: 0.78rem; color: #64748b;">
                         Update individual employee TINs directly
@@ -319,7 +321,7 @@
                                             <input type="text" id="empTin_<%= emp.id %>" value="<%= emp.tinNumber || '' %>" placeholder="e.g. 123-456-789-000" style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.82rem; font-family: monospace; font-weight: 600; width: 140px;">
                                         </td>
                                         <td style="padding: 8px 12px; text-align: center;">
-                                            <button type="button" onclick="saveIndividualTin('<%= emp.id %>', this)" style="padding: 5px 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                                            <button type="button" onclick="saveIndividualTin('<%= emp.id %>', this)" style="padding: 5px 12px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
                                                 Save
                                             </button>
                                         </td>
@@ -376,7 +378,7 @@ async function submitLabTaxSettings(e) {
         const data = await res.json();
         if (data.success) {
             msg.style.color = '#16a34a';
-            msg.textContent = '✓ Laboratory Tax Settings Saved!';
+            msg.textContent = 'Laboratory Tax Settings Saved!';
             setTimeout(() => { msg.textContent = ''; }, 3000);
         } else {
             msg.style.color = '#dc2626';
@@ -387,7 +389,7 @@ async function submitLabTaxSettings(e) {
         msg.textContent = 'Network error saving settings';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Lab Tax Profile';
+        btn.textContent = '<i class="fa fa-floppy-disk"></i> Save Lab Tax Profile';
     }
 }
 
@@ -410,9 +412,9 @@ async function saveIndividualTin(empId, btn) {
         const data = await res.json();
         if (data.success) {
             btn.style.background = '#059669';
-            btn.textContent = '✓ Saved';
+            btn.textContent = 'Saved';
             setTimeout(() => {
-                btn.style.background = '#4f46e5';
+                btn.style.background = '#059669';
                 btn.textContent = 'Save';
                 btn.disabled = false;
             }, 1800);

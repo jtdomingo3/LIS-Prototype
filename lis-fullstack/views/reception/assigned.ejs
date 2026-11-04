@@ -13,7 +13,7 @@
     min-height: 100vh;
     padding: 20px;
     background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body, 'Inter', sans-serif);
   }
 
   .kiosk-header {
@@ -23,6 +23,7 @@
   }
 
   .kiosk-title {
+    font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
     font-size: 2.5rem;
     font-weight: 800;
     color: #fff;
@@ -283,7 +284,7 @@
 
 <div class="kiosk-container" id="kioskContainer">
   <div class="kiosk-header">
-    <h1 class="kiosk-title">🏥 Patient Queue Display</h1>
+    <h1 class="kiosk-title"><i class="fa-solid fa-hospital-user" style="color:var(--primary-brand, #10b981); margin-right:12px;"></i>Patient Queue Display</h1>
     <p class="kiosk-subtitle">Please proceed to your assigned area when your number is called</p>
     <div class="kiosk-time" id="currentTime">--:--:--</div>
   </div>
@@ -294,7 +295,7 @@
       <span id="connectionStatus">Connecting...</span>
     </div>
     <div class="status-indicator">
-      <span>📅</span>
+      <i class="fa-solid fa-calendar-day" style="color:#94a3b8; margin-right:6px;"></i>
       <span id="lastUpdate">--</span>
     </div>
   </div>
@@ -342,7 +343,7 @@
 
 <div class="kiosk-footer">
   <button class="sound-btn disabled" id="soundToggle" onclick="toggleSound()">
-    🔇 Click to Enable Sound
+    <i class="fa-solid fa-volume-xmark" style="margin-right:8px;"></i> Click to Enable Sound
   </button>
   <div class="footer-info">
     <span id="messageCount">0</span> updates received
@@ -496,7 +497,7 @@
       const audioReady = await initAudio();
       soundEnabled = true;
       soundToggle.className = 'sound-btn enabled';
-      soundToggle.innerHTML = '🔔 Sound Enabled';
+      soundToggle.innerHTML = '<i class="fa-solid fa-volume-high" style="margin-right:8px;"></i> Sound Enabled';
       
       // Play a test sound to confirm
       setTimeout(() => {
@@ -508,7 +509,7 @@
       // Disable sound
       soundEnabled = false;
       soundToggle.className = 'sound-btn disabled';
-      soundToggle.innerHTML = '🔇 Click to Enable Sound';
+      soundToggle.innerHTML = '<i class="fa-solid fa-volume-xmark" style="margin-right:8px;"></i> Click to Enable Sound';
       console.log('[Kiosk] Sound disabled');
     }
   };

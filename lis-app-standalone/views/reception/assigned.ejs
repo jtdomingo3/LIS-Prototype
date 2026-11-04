@@ -13,7 +13,7 @@
     min-height: 100vh;
     padding: 20px;
     background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body, 'Inter', sans-serif);
   }
 
   .kiosk-header {
@@ -23,6 +23,7 @@
   }
 
   .kiosk-title {
+    font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
     font-size: 2.5rem;
     font-weight: 800;
     color: #fff;
@@ -245,6 +246,36 @@
     font-size: 0.85rem;
   }
 
+  /* Releasing of Result Batch Grid */
+  .next-list,
+  .releasing-batch-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    width: 100%;
+    margin: 2px 0 0 0;
+  }
+  .next-item,
+  .releasing-batch-item {
+    background: #f8fafc;
+    color: #0f172a;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    font-variant-numeric: tabular-nums;
+    font-family: inherit;
+  }
+  .releasing-batch-empty {
+    grid-column: 1 / -1;
+    color: #cbd5e1;
+    font-size: 1.8rem;
+    text-align: center;
+    padding: 10px 0;
+  }
+
   /* Ensure content doesn't hide behind fixed footer */
   .kiosk-container {
     padding-bottom: 80px;
@@ -253,7 +284,7 @@
 
 <div class="kiosk-container" id="kioskContainer">
   <div class="kiosk-header">
-    <h1 class="kiosk-title">🏥 Patient Queue Display</h1>
+    <h1 class="kiosk-title"><i class="fa-solid fa-hospital-user" style="color:var(--primary-brand, #10b981); margin-right:12px;"></i>Patient Queue Display</h1>
     <p class="kiosk-subtitle">Please proceed to your assigned area when your number is called</p>
     <div class="kiosk-time" id="currentTime">--:--:--</div>
   </div>
@@ -264,7 +295,7 @@
       <span id="connectionStatus">Connecting...</span>
     </div>
     <div class="status-indicator">
-      <span>📅</span>
+      <i class="fa-solid fa-calendar-day" style="color:#94a3b8; margin-right:6px;"></i>
       <span id="lastUpdate">--</span>
     </div>
   </div>
@@ -274,22 +305,35 @@
       <% const safeId = area.replace(/[^a-z0-9]/gi, '_'); %>
       <% const patients = assignments[area] || []; %>
       <% const hasPatients = patients.length > 0; %>
+      <% const isReleasing = String(area).toLowerCase().includes('releas'); %>
       <div class="area-card <%= hasPatients ? 'has-patients' : '' %>" id="card-<%= safeId %>" data-area="<%= area %>">
         <div class="area-header">
           <h3 class="area-name"><%= area %></h3>
           <span class="area-count <%= hasPatients ? 'active' : '' %>" id="count-<%= safeId %>"><%= patients.length %></span>
         </div>
         <div class="patient-display">
-          <div class="patient-label">Now Serving</div>
-          <div class="patient-number <%= !hasPatients ? 'empty' : '' %>" id="patient-<%= safeId %>">
-            <%= hasPatients ? (patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].patientCode) : '—' %>
-          </div>
-          <% if (patients.length > 1) { %>
-          <div class="next-patient" id="next-<%= safeId %>">
-            Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].patientCode %></strong>
-          </div>
+          <% if (isReleasing) { %>
+            <div class="releasing-batch-list" id="releasinglist-<%= safeId %>">
+              <% if (hasPatients) { %>
+                <% for (let i = 0; i < Math.min(patients.length, 26); i++) { %>
+                  <div class="releasing-batch-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : (patients[i].testId || '—') %></div>
+                <% } %>
+              <% } else { %>
+                <div class="releasing-batch-empty">—</div>
+              <% } %>
+            </div>
           <% } else { %>
-          <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
+            <div class="patient-label">Now Serving</div>
+            <div class="patient-number <%= !hasPatients ? 'empty' : '' %>" id="patient-<%= safeId %>">
+              <%= hasPatients ? (patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].patientCode) : '—' %>
+            </div>
+            <% if (patients.length > 1) { %>
+            <div class="next-patient" id="next-<%= safeId %>">
+              Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].patientCode %></strong>
+            </div>
+            <% } else { %>
+            <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
+            <% } %>
           <% } %>
         </div>
       </div>
@@ -299,7 +343,7 @@
 
 <div class="kiosk-footer">
   <button class="sound-btn disabled" id="soundToggle" onclick="toggleSound()">
-    🔇 Click to Enable Sound
+    <i class="fa-solid fa-volume-xmark" style="margin-right:8px;"></i> Click to Enable Sound
   </button>
   <div class="footer-info">
     <span id="messageCount">0</span> updates received
@@ -371,33 +415,63 @@
     lastUpdate.textContent = 'Updated: ' + now.toLocaleTimeString();
   }
 
+  // Global gesture unlocker to cleanly resume AudioContext without triggering browser autoplay warnings
+  let audioUnlockSetup = false;
+  function setupAudioUnlock() {
+    if (audioUnlockSetup) return;
+    audioUnlockSetup = true;
+    const events = ['click', 'touchstart', 'pointerdown', 'keydown'];
+    const unlockHandler = async function() {
+      if (audioContext && audioContext.state === 'suspended') {
+        try {
+          await audioContext.resume();
+          console.log('[Kiosk] AudioContext resumed via user gesture');
+        } catch (e) {}
+      }
+      events.forEach(ev => window.removeEventListener(ev, unlockHandler, true));
+    };
+    events.forEach(ev => window.addEventListener(ev, unlockHandler, { once: true, capture: true, passive: true }));
+  }
+
   // ===== SOUND FUNCTIONS =====
   async function initAudio() {
     try {
-      // Create AudioContext
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioContext = new AC();
+      if (!audioContext) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioContext = new AC();
+      }
+
+      // Cleanly listen for user gesture if suspended rather than forcing immediate resume()
+      if (audioContext && audioContext.state === 'suspended') {
+        setupAudioUnlock();
+      }
 
       // Fetch and decode audio
-      const response = await fetch(CONFIG.SOUND_SRC);
-      if (response.ok) {
-        const arrayBuffer = await response.arrayBuffer();
-        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        console.log('[Kiosk] Audio loaded and decoded successfully');
-        return true;
+      if (audioContext && !audioBuffer) {
+        const response = await fetch(CONFIG.SOUND_SRC);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          console.log('[Kiosk] Audio loaded and decoded successfully');
+        }
       }
+      return true;
     } catch (e) {
       console.warn('[Kiosk] AudioContext init failed, using fallback:', e);
+      return false;
     }
-    return false;
   }
 
-  function playNotificationSound() {
+  async function playNotificationSound() {
     if (!soundEnabled) return;
+
+    if (audioContext && audioContext.state === 'suspended') {
+      try { await audioContext.resume(); } catch (e) {}
+    }
 
     try {
       // Try AudioContext first (better for rapid plays)
-      if (audioContext && audioBuffer) {
+      if (audioContext && audioBuffer && audioContext.state === 'running') {
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(audioContext.destination);
@@ -423,7 +497,7 @@
       const audioReady = await initAudio();
       soundEnabled = true;
       soundToggle.className = 'sound-btn enabled';
-      soundToggle.innerHTML = '🔔 Sound Enabled';
+      soundToggle.innerHTML = '<i class="fa-solid fa-volume-high" style="margin-right:8px;"></i> Sound Enabled';
       
       // Play a test sound to confirm
       setTimeout(() => {
@@ -435,7 +509,7 @@
       // Disable sound
       soundEnabled = false;
       soundToggle.className = 'sound-btn disabled';
-      soundToggle.innerHTML = '🔇 Click to Enable Sound';
+      soundToggle.innerHTML = '<i class="fa-solid fa-volume-xmark" style="margin-right:8px;"></i> Click to Enable Sound';
       console.log('[Kiosk] Sound disabled');
     }
   };
@@ -457,6 +531,7 @@
       const safeId = area.replace(/[^a-z0-9]/gi, '_');
       const patients = data.assignments[area] || [];
       const hasPatients = patients.length > 0;
+      const isReleasing = String(area).toLowerCase().includes('releas');
 
       // Update count badge
       const countEl = document.getElementById('count-' + safeId);
@@ -465,30 +540,51 @@
         countEl.className = 'area-count' + (hasPatients ? ' active' : '');
       }
 
-      // Update patient number
-      const patientEl = document.getElementById('patient-' + safeId);
-      if (patientEl) {
-        if (hasPatients) {
-          const code = patients[0].patientCode || '';
-          patientEl.textContent = code.includes('-') ? code.split('-').pop() : code;
-          patientEl.className = 'patient-number';
-        } else {
-          patientEl.textContent = '—';
-          patientEl.className = 'patient-number empty';
+      if (isReleasing) {
+        // Batch display for Releasing of Result
+        const releasingListEl = document.getElementById('releasinglist-' + safeId);
+        if (releasingListEl) {
+          if (hasPatients) {
+            releasingListEl.innerHTML = '';
+            const entries = patients.slice(0, 26);
+            entries.forEach(p => {
+              const code = p.patientCode || '';
+              const short = code.includes('-') ? code.split('-').pop() : (p.testId || '—');
+              const div = document.createElement('div');
+              div.className = 'releasing-batch-item';
+              div.textContent = short;
+              releasingListEl.appendChild(div);
+            });
+          } else {
+            releasingListEl.innerHTML = '<div class="releasing-batch-empty">—</div>';
+          }
         }
-      }
+      } else {
+        // Update patient number
+        const patientEl = document.getElementById('patient-' + safeId);
+        if (patientEl) {
+          if (hasPatients) {
+            const code = patients[0].patientCode || '';
+            patientEl.textContent = code.includes('-') ? code.split('-').pop() : code;
+            patientEl.className = 'patient-number';
+          } else {
+            patientEl.textContent = '—';
+            patientEl.className = 'patient-number empty';
+          }
+        }
 
-      // Update next patient
-      const nextEl = document.getElementById('next-' + safeId);
-      if (nextEl) {
-        if (patients.length > 1) {
-          const nextCode = patients[1].patientCode || '';
-          const escAssigned = typeof window.escapeHtml === 'function' ? window.escapeHtml : s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-          const nextPart = nextCode.includes('-') ? nextCode.split('-').pop() : nextCode;
-          nextEl.innerHTML = 'Next: <strong>' + escAssigned(nextPart) + '</strong>';
-          nextEl.style.display = 'block';
-        } else {
-          nextEl.style.display = 'none';
+        // Update next patient
+        const nextEl = document.getElementById('next-' + safeId);
+        if (nextEl) {
+          if (patients.length > 1) {
+            const nextCode = patients[1].patientCode || '';
+            const escAssigned = typeof window.escapeHtml === 'function' ? window.escapeHtml : s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const nextPart = nextCode.includes('-') ? nextCode.split('-').pop() : nextCode;
+            nextEl.innerHTML = 'Next: <strong>' + escAssigned(nextPart) + '</strong>';
+            nextEl.style.display = 'block';
+          } else {
+            nextEl.style.display = 'none';
+          }
         }
       }
 

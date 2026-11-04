@@ -287,9 +287,9 @@
       <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">DOH Action Required</div>
     </div>
 
-    <div class="eq-stat-card" style="border-left: 4px solid #7c3aed; cursor: pointer;" onclick="openXrayModal()">
+    <div class="eq-stat-card" style="border-left: 4px solid #0284c7; cursor: pointer;" onclick="openXrayModal()">
       <div class="eq-stat-title">Diagnostic X-Ray Units</div>
-      <div class="eq-stat-val" style="color: #7c3aed;"><%= kpi.xrayCount %></div>
+      <div class="eq-stat-val" style="color: #0284c7;"><%= kpi.xrayCount %></div>
       <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">FDA CDRRHR Radiation Safety</div>
     </div>
   </div>
@@ -351,11 +351,11 @@
     <div style="width: 180px; flex-shrink: 0;">
       <select id="statusFilter" style="width: 100%; height: 38px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.88em; background: #f8fafc; color: #334155; cursor: pointer; outline: none; transition: all 0.15s; font-weight: 500;" onfocus="this.style.borderColor='#0284c7'; this.style.background='#ffffff';" onblur="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc';" onchange="applyFilters()">
         <option value="">All Statuses</option>
-        <option value="OPERATIONAL">✓ Operational</option>
-        <option value="CALIBRATION_DUE">⚠️ Due Soon</option>
-        <option value="CALIBRATION_OVERDUE">❌ Overdue</option>
-        <option value="MAINTENANCE_DUE">🔧 Maintenance</option>
-        <option value="OUT_OF_SERVICE">⛔ Out of Service</option>
+        <option value="OPERATIONAL">Operational</option>
+        <option value="CALIBRATION_DUE">Due Soon</option>
+        <option value="CALIBRATION_OVERDUE">Overdue</option>
+        <option value="MAINTENANCE_DUE">Maintenance</option>
+        <option value="OUT_OF_SERVICE">Out of Service</option>
       </select>
     </div>
 
@@ -407,7 +407,7 @@
                 <div style="font-size: 0.8em; color: #64748b;">
                   <span style="background: #f1f5f9; color: #334155; padding: 1px 6px; border-radius: 4px; font-weight: 500;"><%= item.category %></span>
                   <%= item.manufacturer ? '• ' + item.manufacturer : '' %> <%= item.modelNumber ? '• ' + item.modelNumber : '' %>
-                  <%= item.isXRay ? '• ☢️ X-Ray Unit' : '' %>
+                  <%= item.isXRay ? '• X-Ray Unit' : '' %>
                 </div>
               </td>
               <td>
@@ -516,10 +516,10 @@
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button type="button" class="button btn-primary" onclick="printLjReport()" title="Print Single Analyte Levey-Jennings Chart with Westgard Rule Flags">
-            <i class="fa fa-print"></i> 🖨️ Print Levey-Jennings
+            <i class="fa fa-print"></i> Print Levey-Jennings
           </button>
           <button type="button" class="button btn-success" style="background: #059669; border-color: #047857; color: #fff;" onclick="printMonthlyQcReport()" title="Print Consolidated Multi-Analyte Chemistry QC Table for DOH Inspection">
-            <i class="fa fa-clipboard-check"></i> 🖨️ Print Multi-Analyte Monthly QC (DOH Inspection)
+            <i class="fa fa-clipboard-check"></i> Print Multi-Analyte Monthly QC (DOH Inspection)
           </button>
           <button type="button" class="button btn-secondary" onclick="exportDohReport()" title="Export JSON Data for Auditing">
             <i class="fa fa-file-export"></i> DOH Report (JSON)
@@ -555,7 +555,7 @@
             <option value="date_desc">Date: Newest First ▾</option>
             <option value="date_asc">Date: Oldest First ▴</option>
             <option value="zscore_desc">Z-Score: Highest Outlier ▾</option>
-            <option value="violations_first">Warnings &amp; Rejections First ⚠️</option>
+            <option value="violations_first">Warnings &amp; Rejections First</option>
           </select>
         </div>
       </div>
@@ -656,9 +656,9 @@
           <label style="font-size: 0.82em; color: #64748b; font-weight: 600;">Status Filter:</label>
           <select id="lj_statusFilter" onchange="renderLjTable()" style="font-size: 0.82em; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
             <option value="">All Runs</option>
-            <option value="ACCEPTED">✓ Accepted Only</option>
-            <option value="WARNING">⚠️ Warnings (1:2s)</option>
-            <option value="REJECTED">❌ Rejections (Violations)</option>
+            <option value="ACCEPTED">Accepted Only</option>
+            <option value="WARNING">Warnings (1:2s)</option>
+            <option value="REJECTED">Rejections (Violations)</option>
           </select>
           <% if (canEdit) { %>
             <button type="button" class="button btn-small btn-secondary" onclick="emptyAnalyteEntries()" style="color: #dc2626; border-color: #fca5a5; font-size: 0.78em; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; background: #fff5f5;" title="Empty / Drop all recorded QC entries for this analyte during testing">
@@ -881,10 +881,10 @@
           </div>
         </div>
 
-        <div class="nrl-card" style="border-top: 3px solid #7c3aed;">
+        <div class="nrl-card" style="border-top: 3px solid #0284c7;">
           <div>
             <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">San Lazaro Hospital / SACCL</div>
-            <div style="font-size: 0.8em; color: #7c3aed; font-weight: 600; margin-bottom: 6px;">Infectious Disease Serology NRL</div>
+            <div style="font-size: 0.8em; color: #0284c7; font-weight: 600; margin-bottom: 6px;">Infectious Disease Serology NRL</div>
             <div style="font-size: 0.8em; color: #64748b;">
               Transfusion-Transmissible Infections (TTI) &amp; Serology: HIV-1/2, HBsAg, Anti-HCV, and Syphilis (Treponemal &amp; Non-Treponemal).
             </div>
@@ -988,9 +988,9 @@
 
       <select id="neqasGradeFilter" class="filter-select" onchange="applyNeqasFilters()">
         <option value="">All SDI Evaluation Ratings</option>
-        <option value="ACCEPTABLE">✓ Acceptable (|SDI| &le; 2.0)</option>
-        <option value="QUESTIONABLE">⚠️ Questionable (2.0 &lt; |SDI| &lt; 3.0)</option>
-        <option value="UNSATISFACTORY">❌ Action Required (|SDI| &ge; 3.0)</option>
+        <option value="ACCEPTABLE">Acceptable (|SDI| &le; 2.0)</option>
+        <option value="QUESTIONABLE">Questionable (2.0 &lt; |SDI| &lt; 3.0)</option>
+        <option value="UNSATISFACTORY">Action Required (|SDI| &ge; 3.0)</option>
         <option value="PENDING">⏳ Pending Peer Evaluation</option>
       </select>
 
@@ -1383,7 +1383,7 @@
               <option value="#0d9488">Teal (#0d9488)</option>
               <option value="#0284c7">Sky Blue (#0284c7)</option>
               <option value="#e11d48">Rose / Crimson (#e11d48)</option>
-              <option value="#7c3aed">Purple (#7c3aed)</option>
+              <option value="#0284c7">Clinical Blue (#0284c7)</option>
               <option value="#d97706">Amber (#d97706)</option>
               <option value="#16a34a">Green (#16a34a)</option>
               <option value="#ea580c">Orange (#ea580c)</option>
@@ -1457,7 +1457,7 @@
               <i class="fa fa-clipboard-list" style="color: #0284c7;"></i> Blood Chemistry Form Presets (21 Official Analytes)
             </label>
             <button type="button" class="button" onclick="preloadAllBloodChemAnalytes()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; font-weight: 600; font-size: 0.82em; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
-              <i class="fa fa-bolt"></i> ⚡ Pre-add All 21 Blood Chemistry Analytes
+              <i class="fa fa-bolt"></i> Pre-add All 21 Blood Chemistry Analytes
             </button>
           </div>
           <p style="font-size: 0.78em; color: #0284c7; margin: 0 0 8px 0; line-height: 1.4;">
@@ -1485,18 +1485,18 @@
               <option value="urea">Blood Urea (10.00-50.00 mg/dL)</option>
               <option value="uric">Uric Acid (2.40-5.70 mg/dL)</option>
             </optgroup>
-            <optgroup label="🧪 Liver Function &amp; Proteins">
+            <optgroup label="Liver Function &amp; Proteins">
               <option value="alt">SGPT (ALT) (0-32 U/L)</option>
               <option value="ast">SGOT (AST) (0-31 U/L)</option>
               <option value="alb">Albumin - ALB (3.00-6.00 g/L)</option>
             </optgroup>
-            <optgroup label="⚡ Electrolytes &amp; Minerals">
+            <optgroup label="Electrolytes &amp; Minerals">
               <option value="sodium">Sodium - Na (136-148 mmol/L)</option>
               <option value="potassium">Potassium - K (3.50-5.10 mmol/L)</option>
               <option value="chloride">Chloride - Cl (98-107 mmol/L)</option>
               <option value="calcium">Calcium - Ca (8.50-10.20 mg/dL)</option>
             </optgroup>
-            <optgroup label="🔬 Other Instruments (Hematology / Coagulation)">
+            <optgroup label="Other Instruments (Hematology / Coagulation)">
               <option value="wbc">WBC - White Blood Cells (10^3/uL)</option>
               <option value="rbc">RBC - Red Blood Cells (10^6/uL)</option>
               <option value="hgb">HGB - Hemoglobin (g/dL)</option>
@@ -3008,7 +3008,7 @@
       <span class="badge" style="background:#e0f2fe; color:#0369a1;">Mean: ${st.observedMean !== undefined && st.observedMean !== null ? st.observedMean : '—'}</span>
       <span class="badge" style="background:#e0f2fe; color:#0369a1;">SD: ${st.observedSd !== undefined && st.observedSd !== null ? st.observedSd : '—'}</span>
       <span class="badge" style="background:#e0f2fe; color:#0369a1;">%CV: ${st.cvPercent || 0}%</span>
-      <span class="badge ${st.inControl ? 'badge-operational' : 'badge-overdue'}">${st.inControl ? '✓ IN CONTROL' : '⚠️ OUT OF CONTROL'}</span>
+      <span class="badge ${st.inControl ? 'badge-operational' : 'badge-overdue'}">${st.inControl ? 'IN CONTROL' : 'OUT OF CONTROL'}</span>
     `;
 
     // Coordinates mapping with generous padding for high-DPI full-screen displays
@@ -3256,11 +3256,11 @@
       }
 
       // Status badge
-      let statusBadge = '<span class="badge badge-operational">✓ Accepted</span>';
+      let statusBadge = '<span class="badge badge-operational">Accepted</span>';
       if (p.status === 'WARNING') {
-        statusBadge = '<span class="badge badge-maintenance">⚠️ Warning (1:2s)</span>';
+        statusBadge = '<span class="badge badge-maintenance">Warning (1:2s)</span>';
       } else if (p.status === 'REJECTED') {
-        statusBadge = '<span class="badge badge-overdue">❌ Rejected</span>';
+        statusBadge = '<span class="badge badge-overdue">Rejected</span>';
       }
 
       // Violations
@@ -3498,15 +3498,15 @@
         if (ev.status === 'ACCEPTED') {
           box.style.background = '#dcfce7';
           box.style.color = '#15803d';
-          box.innerHTML = `<strong>✓ Accepted:</strong> Reading ${safeVal} recorded (Z-score: ${safeZScore}). Within &plusmn;2SD.`;
+          box.innerHTML = `<strong>Accepted:</strong> Reading ${safeVal} recorded (Z-score: ${safeZScore}). Within &plusmn;2SD.`;
         } else if (ev.status === 'WARNING') {
           box.style.background = '#fef3c7';
           box.style.color = '#b45309';
-          box.innerHTML = `<strong>⚠️ Warning (${safeRules}):</strong> ${safeExplanation}`;
+          box.innerHTML = `<strong>Warning (${safeRules}):</strong> ${safeExplanation}`;
         } else {
           box.style.background = '#fee2e2';
           box.style.color = '#b91c1c';
-          box.innerHTML = `<strong>❌ REJECTED (${safeRules}):</strong> ${safeExplanation} <br><em>Action Required: Check reagent, recalibrate, or run fresh control.</em>`;
+          box.innerHTML = `<strong>REJECTED (${safeRules}):</strong> ${safeExplanation} <br><em>Action Required: Check reagent, recalibrate, or run fresh control.</em>`;
         }
         document.getElementById('qc_value').value = '';
 
@@ -3941,11 +3941,11 @@
 
       let gradeBadge = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fbbf24;">⏳ Pending Peer Eval</span>';
       if (grade === 'ACCEPTABLE') {
-        gradeBadge = '<span class="badge-operational">✓ ACCEPTABLE</span>';
+        gradeBadge = '<span class="badge-operational">ACCEPTABLE</span>';
       } else if (grade === 'QUESTIONABLE' || grade === 'EVALUATED_QUESTIONABLE') {
-        gradeBadge = '<span class="badge-duesoon">⚠️ QUESTIONABLE</span>';
+        gradeBadge = '<span class="badge-duesoon">QUESTIONABLE</span>';
       } else if (grade === 'UNSATISFACTORY' || grade === 'ACTION_REQUIRED') {
-        gradeBadge = '<span class="badge-overdue">❌ ACTION REQUIRED</span>';
+        gradeBadge = '<span class="badge-overdue">ACTION REQUIRED</span>';
       }
 
       let sdiDisplay = '<span style="color:#64748b;">—</span>';
@@ -3988,7 +3988,7 @@
         <td>${gradeBadge}</td>
         <td style="text-align:right; white-space:nowrap;">
           <button type="button" onclick="printNeqasCertificate('${r.id}')" class="button btn-small btn-primary" style="background:#10b981; border-color:#059669; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; cursor:pointer;" title="Print Official NEQAS Performance Certificate">
-            <i class="fa fa-print"></i> 🖨️ Print Certificate
+            <i class="fa fa-print"></i> Print Certificate
           </button>
           <button type="button" class="button btn-small btn-secondary" onclick="openNeqasEditModal('${r.id}')" title="Enter / Update NRL Peer Mean & SD" style="margin-left:4px;">
             <i class="fa fa-pen"></i> Peer Result
@@ -4071,7 +4071,7 @@
         msg += `• [${a.equipmentCode}] ${a.name}: ${a.isOverdue ? 'OVERDUE by ' + Math.abs(a.daysUntilCalibration) + 'd' : 'Due in ' + a.daysUntilCalibration + 'd'} (${new Date(a.nextCalibrationDate).toLocaleDateString()})\n`;
       });
     } else {
-      msg += '✓ All calibrations are up-to-date.\n';
+      msg += 'All calibrations are up-to-date.\n';
     }
     alert(msg);
   }

@@ -28,7 +28,7 @@
 <% if (!test) { %>
   <div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
     <div style="padding:48px 16px; text-align:center; color:#94a3b8;">
-      <span style="font-size:2.4em; display:block; margin-bottom:8px;">📋</span>
+      <div style="font-size:2.5rem; color:#94a3b8; margin-bottom:8px;"><i class="fa fa-clipboard-list"></i></div>
       <strong style="font-size:1.1em; color:#475569; display:block;">No Completed Diagnostic Reports Yet</strong>
       <span style="font-size:0.9em;">When tests are completed and results are saved, clinical reports will appear here for preview and release.</span>
     </div>
@@ -39,7 +39,7 @@
     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
       <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %> style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;">← Previous</a>
       <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %> style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;">Next →</a>
-      <a href="/reports/worksheet" class="button btn-secondary" style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;" title="View Batch Worksheets">📊 Worksheets</a>
+      <a href="/reports/worksheet" class="button btn-secondary" style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;" title="View Batch Worksheets"><i class="fa fa-table-list" style="margin-right:6px;"></i> Worksheets</a>
     </div>
 
     <div class="reports-floating-meta" style="display:flex; align-items:center; gap:8px; font-size:0.88em;">
@@ -52,10 +52,10 @@
 
     <div style="display:flex; gap:10px; align-items:center; flex-shrink:0;">
       <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:0 18px; height:38px; font-weight:600; font-size:13.5px; white-space:nowrap; border-radius:8px;">
-        📥 Download PDF
+        <i class="fa fa-file-pdf" style="margin-right:6px;"></i> Download PDF
       </a>
       <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange" style="display:inline-flex; align-items:center; gap:6px; padding:0 18px; height:38px; font-weight:600; font-size:13.5px; white-space:nowrap; border-radius:8px;">
-        🖨️ Print Report
+        <i class="fa fa-print" style="margin-right:6px;"></i> Print Report
       </a>
     </div>
   </div>
@@ -64,7 +64,7 @@
     <!-- Line 2: Search, Filters & Batch Actions (Normal document flow, not floating) -->
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:nowrap; width:100%;">
     <div style="position:relative; flex:1; min-width:180px;">
-      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
+      <i class="fa fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;"></i>
       <input id="patientSearch" type="text" placeholder="Search patient name..." autocomplete="off" style="width:100%; height:38px; padding:0 12px 0 34px; font-size:13.5px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
     </div>
 
@@ -142,14 +142,14 @@
       <div style="display:flex; align-items:center; gap:8px;">
         <span style="font-weight:700; font-size:13px; color:#166534;"><i class="fa fa-heartbeat"></i> 2D Echo Result Sheets:</span>
         <div style="display:inline-flex; background:#e2e8f0; border-radius:6px; padding:2px; gap:2px;">
-          <button type="button" class="echo-preview-tab-btn active" id="btnEchoPreviewAll" onclick="setPreviewEchoSheet('all')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:#0284c7; color:#fff;">📑 Both Sheets (2 Pages)</button>
-          <button type="button" class="echo-preview-tab-btn" id="btnEchoPreviewInfo" onclick="setPreviewEchoSheet('info')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#334155;">📊 1. Info Sheet</button>
-          <button type="button" class="echo-preview-tab-btn" id="btnEchoPreviewReading" onclick="setPreviewEchoSheet('reading')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#334155;">📝 2. Reading Sheet</button>
+          <button type="button" class="echo-preview-tab-btn active" id="btnEchoPreviewAll" onclick="setPreviewEchoSheet('all')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:#0284c7; color:#fff;"><i class="fa fa-copy" style="margin-right:4px;"></i> Both Sheets (2 Pages)</button>
+          <button type="button" class="echo-preview-tab-btn" id="btnEchoPreviewInfo" onclick="setPreviewEchoSheet('info')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#334155;"><i class="fa fa-file-lines" style="margin-right:4px;"></i> 1. Info Sheet</button>
+          <button type="button" class="echo-preview-tab-btn" id="btnEchoPreviewReading" onclick="setPreviewEchoSheet('reading')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#334155;"><i class="fa fa-file-waveform" style="margin-right:4px;"></i> 2. Reading Sheet</button>
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <button type="button" onclick="printSelectedEchoSheet()" class="button btn-orange" style="height:32px; padding:0 12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px; border-radius:6px;">
-          🖨️ Print Selected Sheet
+          <i class="fa fa-print" style="margin-right:6px;"></i> Print Selected Sheet
         </button>
       </div>
     </div>

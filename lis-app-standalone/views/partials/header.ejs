@@ -4,13 +4,27 @@
   <meta charset="utf-8" />
   <title><%= title || 'LIS' %></title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="/vendor/fontawesome/css/all.min.css" rel="stylesheet">
   <style>
-    .container { max-width: 980px; margin: 12px auto; font-family: Arial, Helvetica, sans-serif }
-    label { display:inline-block; min-width:90px }
-    input, select { margin:0 8px 8px 0 }
-    table { border-collapse: collapse }
-    table td, table th { padding:4px; border:1px solid #ccc }
-    button { padding:6px 10px }
+    :root {
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Plus Jakarta Sans', var(--font-body);
+      --primary-brand: #10b981;
+      --primary-brand-dark: #059669;
+    }
+    body { font-family: var(--font-body); background: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
+    .container { max-width: 980px; margin: 0 auto; background: #ffffff; padding: 24px 28px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    h1 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin: 0 0 18px 0; color: #0f172a; }
+    label { display: inline-block; min-width: 90px; font-weight: 600; font-size: 0.9rem; }
+    input, select { margin: 0 8px 8px 0; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; }
+    table { border-collapse: separate; border-spacing: 0; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+    table td, table th { padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+    table th { background: #f8fafc; font-weight: 600; text-align: left; }
+    button { padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: #ffffff; transition: all 0.15s ease; }
+    button:hover { background: #f1f5f9; }
   </style>
 </head>
 <body>

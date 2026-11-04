@@ -405,16 +405,16 @@
           </div>
 
           <!-- [P] PLAN -->
-          <div style="background:#ffffff; border:1px solid #ede9fe; border-radius:10px; padding:14px 16px; border-left:4px solid #7c3aed;">
+          <div style="background:#ffffff; border:1px solid #bae6fd; border-radius:10px; padding:14px 16px; border-left:4px solid #0284c7;">
             <h4 style="margin:0 0 8px 0; color:#6d28d9; display:flex; align-items:center; gap:6px;">
-              <span style="background:#7c3aed; color:#fff; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85em;">P</span>
+              <span style="background:#0284c7; color:#fff; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85em;">P</span>
               Plan & Interventions
             </h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
               <div><strong>Treatment Plan & Recommendations:</strong> ${r.treatmentPlan}</div>
               <div>
                 <strong>Medical Prescriptions (Rx) [${r.prescriptionsCount} items]:</strong>
-                <div style="background:#fbfbfe; border:1px solid #e0e7ff; border-radius:6px; padding:8px 10px; margin-top:4px;">
+                <div style="background:#fbfbfe; border:1px solid #bae6fd; border-radius:6px; padding:8px 10px; margin-top:4px;">
                   ${r.prescriptionsFormatted !== '—' ? r.prescriptionsFormatted.split('; ').map(rx => `<div>• ${rx}</div>`).join('') : 'None prescribed'}
                 </div>
               </div>
@@ -492,7 +492,7 @@
             const pParts = [];
             if (r.treatmentPlan && r.treatmentPlan !== '—') pParts.push(r.treatmentPlan.slice(0, 65) + (r.treatmentPlan.length > 65 ? '...' : ''));
             if (r.prescriptionsFormatted && r.prescriptionsFormatted !== '—') pParts.push(`<span style="color:#0284c7;"><strong>Rx:</strong> ${r.prescriptionsFormatted.slice(0, 65)}${r.prescriptionsFormatted.length > 65 ? '...' : ''}</span>`);
-            if (r.labOrdersFormatted && r.labOrdersFormatted !== '—') pParts.push(`<span style="color:#7c3aed;"><strong>Labs:</strong> ${r.labOrdersFormatted.slice(0, 50)}${r.labOrdersFormatted.length > 50 ? '...' : ''}</span>`);
+            if (r.labOrdersFormatted && r.labOrdersFormatted !== '—') pParts.push(`<span style="color:#0284c7;"><strong>Labs:</strong> ${r.labOrdersFormatted.slice(0, 50)}${r.labOrdersFormatted.length > 50 ? '...' : ''}</span>`);
             const pHtml = pParts.length ? pParts.join('<br>') : '—';
 
             tr.innerHTML = `
@@ -525,7 +525,7 @@
               </td>
               <td style="padding:10px 12px; vertical-align:top; text-align:center; white-space:nowrap;">
                 <button type="button" class="button btn-secondary btn-small" onclick="window.__viewSoapRecord(${idx})" style="height:32px; padding:0 10px; font-size:0.82em; font-weight:600; border-color:#99f6e4; color:#0f766e; background:#f0fdfa; border-radius:6px; cursor:pointer;">
-                  📋 Full Record
+                  <i class="fa fa-file-lines" style="margin-right:4px;"></i> Full Record
                 </button>
               </td>
             `;

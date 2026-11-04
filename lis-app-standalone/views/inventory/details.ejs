@@ -21,7 +21,7 @@
       <%= item.totalStock %> <span style="font-size: 0.5em; font-weight: 500; color: var(--text-gray);"><%= item.unit %></span>
     </div>
     <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">
-      <%= item.totalStock <= 0 ? '❌ Out of Stock' : (item.totalStock <= item.minThreshold ? '⚠️ Low Stock Alert' : '✓ Normal Stock Level') %>
+      <%= item.totalStock <= 0 ? 'Out of Stock' : (item.totalStock <= item.minThreshold ? 'Low Stock Alert' : 'Normal Stock Level') %>
     </div>
   </div>
 
@@ -31,7 +31,7 @@
       <%= item.minThreshold %> <span style="font-size: 0.5em; font-weight: 500; color: var(--text-gray);"><%= item.unit %></span>
     </div>
     <div style="color: #b91c1c; font-size: 0.85em; margin-top: 4px; font-weight: 600;">
-      🚨 Critical: <%= item.criticalThreshold !== undefined ? item.criticalThreshold : 2 %> <%= item.unit %>
+      Critical: <%= item.criticalThreshold !== undefined ? item.criticalThreshold : 2 %> <%= item.unit %>
     </div>
   </div>
 
@@ -284,7 +284,7 @@
                           </div>
                         <% } %>
                       <% } else { %>
-                        <span style="color: var(--text-gray); font-size: 0.85em;">🔒 Sealed</span>
+                        <span style="color: var(--text-gray); font-size: 0.85em;"><i class="fa fa-lock" style="font-size:0.85em; margin-right:4px;"></i> Sealed</span>
                         <% if (userCanEdit && batch.quantityOnHand > 0 && item.openVialStabilityDays) { %>
                           <button type="button" class="button btn-small btn-secondary" style="padding: 2px 8px; font-size: 0.75em; margin-top: 4px; display: block;" onclick="openOpenVialModal('<%= batch.id %>', '<%= batch.lotNumber %>');">
                             Open Vial
@@ -357,7 +357,7 @@
             else if (tx.transactionType === 'OPEN_VIAL') { txColor = 'var(--info)'; txIcon = 'fa-lock-open'; }
             else if (tx.transactionType === 'ADJUST') { txColor = '#d97706'; txIcon = 'fa-scale-balanced'; }
             else if (tx.transactionType === 'DISCARD') { txColor = 'var(--danger)'; txIcon = 'fa-trash'; }
-            else if (tx.transactionType === 'QC_USAGE') { txColor = '#8b5cf6'; txIcon = 'fa-vial-circle-check'; }
+            else if (tx.transactionType === 'QC_USAGE') { txColor = '#0284c7'; txIcon = 'fa-vial-circle-check'; }
           %>
             <div style="padding: 12px 14px; border: 1px solid var(--border-gray); border-radius: 10px; margin-bottom: 8px; background: #fff; display: flex; justify-content: space-between; align-items: start; gap: 12px;">
               <div>
@@ -991,7 +991,7 @@
   function confirmDeleteItem() {
     const modal = document.getElementById('modalDeleteItem');
     if (!modal) {
-      if (confirm(`⚠️ WARNING: Are you sure you want to permanently delete "<%= item.name %>"?\n\nThis will remove the item, all lot records, and historical audit entries.`)) {
+      if (confirm(`WARNING: Are you sure you want to permanently delete "<%= item.name %>"?\n\nThis will remove the item, all lot records, and historical audit entries.`)) {
         performDeleteItem();
       }
       return;

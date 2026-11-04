@@ -21,7 +21,8 @@
     </div>
   </div>
 
-  <form action="/users/profile?_method=PUT" method="POST" enctype="multipart/form-data">
+  <form action="/users/profile?_method=PUT&_csrf=<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" method="POST" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px;">
       
       <!-- Left Column: Personal & Professional Credentials -->
@@ -48,7 +49,7 @@
         <!-- E-Signature Section -->
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-top: 4px;">
           <div style="font-weight: 600; font-size: 0.9em; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-            <span><i class="fa fa-signature" style="color: #6366f1;"></i> Digital Signature (PNG)</span>
+            <span><i class="fa fa-signature" style="color: #059669;"></i> Digital Signature (PNG)</span>
             <span style="font-size: 0.78em; color: #64748b;">Transparent background recommended</span>
           </div>
 

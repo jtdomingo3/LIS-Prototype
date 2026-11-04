@@ -15,7 +15,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
         <div>
             <h2 style="margin: 0; font-size: 1.6rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                <span style="background: #4f46e5; color: white; border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;">📁</span>
+                <span style="background: #059669; color: white; border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;"><i class="fa fa-folder"></i></span>
                 HR Documents & Tax Forms
             </h2>
             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
@@ -24,30 +24,30 @@
         </div>
         <div style="display: flex; gap: 10px;">
             <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
-            <button onclick="openLabTaxModal()" style="padding: 10px 18px; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                <span>🏛️</span> Lab Tax &amp; BIR Settings
+            <button onclick="openLabTaxModal()" style="padding: 10px 18px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa fa-building-columns"></i> Lab Tax &amp; BIR Settings
             </button>
             <% } %>
-            <button onclick="document.getElementById('uploadModal').style.display='flex'" style="padding: 10px 18px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                <span>📤</span> Upload Document / Form
+            <button onclick="document.getElementById('uploadModal').style.display='flex'" style="padding: 10px 18px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa fa-cloud-arrow-up"></i> Upload Document / Form
             </button>
         </div>
     </div>
 
     <!-- HR Navigation Bar with Indigo Identity -->
-    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e0e7ff; padding-bottom: 12px; overflow-x: auto;">
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #ecfdf5; padding-bottom: 12px; overflow-x: auto;">
         <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Dashboard</a>
         <a href="/hr/employees" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Employees (<%= employees ? employees.length : 0 %>)</a>
         <a href="/hr/payroll" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Payroll Register</a>
         <a href="/hr/leaves" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Leaves</a>
-        <a href="/hr/documents" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #4f46e5; color: white;">Documents & Tax Forms (<%= documents ? documents.length : 0 %>)</a>
-        <a href="/hr/my" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #4f46e5; margin-left: auto;">👤 View My Portal</a>
+        <a href="/hr/documents" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #059669; color: white;">Documents & Tax Forms (<%= documents ? documents.length : 0 %>)</a>
+        <a href="/hr/my" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #059669; margin-left: auto;"><i class="fa fa-user" style="margin-right:6px;"></i> View My Portal</a>
     </div>
 
     <!-- Search & Filter Controls -->
     <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid #e2e8f0; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <button onclick="filterDocs('all')" class="doc-filter active" id="filter-all" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #4f46e5; background: #e0e7ff; color: #4338ca;">
+            <button onclick="filterDocs('all')" class="doc-filter active" id="filter-all" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #059669; background: #ecfdf5; color: #065f46;">
                 All Documents (<%= documents ? documents.length : 0 %>)
             </button>
             <button onclick="filterDocs('Tax Form 2316')" class="doc-filter" id="filter-tax" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: white; color: #475569;">
@@ -72,10 +72,10 @@
     <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
         <% if (!documents || documents.length === 0) { %>
             <div style="padding: 60px 20px; text-align: center; color: #94a3b8;">
-                <div style="font-size: 3rem; margin-bottom: 12px;">📁</div>
+                <div style="font-size: 3rem; margin-bottom: 12px; color: #94a3b8;"><i class="fa fa-folder-open"></i></div>
                 <div style="font-size: 1.1rem; font-weight: 600; color: #475569;">No Documents Uploaded Yet</div>
                 <p style="font-size: 0.85rem; margin-top: 4px;">Upload signed employment contracts, scanned BIR 2316 forms, or certificates to archive them safely.</p>
-                <button onclick="document.getElementById('uploadModal').style.display='flex'" style="margin-top: 14px; padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <button onclick="document.getElementById('uploadModal').style.display='flex'" style="margin-top: 14px; padding: 8px 18px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     Upload First Document
                 </button>
             </div>
@@ -107,7 +107,7 @@
                                 <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
                                     <div style="display: flex; align-items: center; gap: 10px;">
                                         <span style="font-size: 1.25rem;">
-                                            <% if (doc.documentType === 'Tax Form 2316') { %>📑<% } else if (doc.documentType === 'Contract') { %>📜<% } else if (doc.documentType === 'COE') { %>📄<% } else if (doc.documentType === 'Clearance') { %>📋<% } else { %>📁<% } %>
+                                            <% if (doc.documentType === 'Tax Form 2316') { %><i class="fa fa-file-invoice"></i><% } else if (doc.documentType === 'Contract') { %><i class="fa fa-file-contract"></i><% } else if (doc.documentType === 'COE') { %><i class="fa fa-file-lines"></i><% } else if (doc.documentType === 'Clearance') { %><i class="fa fa-clipboard-list"></i><% } else { %><i class="fa fa-folder"></i><% } %>
                                         </span>
                                         <div>
                                             <div><%= doc.title %></div>
@@ -118,12 +118,12 @@
                                     </div>
                                 </td>
                                 <td style="padding: 14px 18px;">
-                                    <span style="background: #e0e7ff; color: #4338ca; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                                    <span style="background: #ecfdf5; color: #065f46; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
                                         <%= doc.documentType %>
                                     </span>
                                 </td>
                                 <td style="padding: 14px 18px; color: #334155;">
-                                    <a href="/hr/employees/<%= doc.employeeId %>" style="color: #4f46e5; text-decoration: none; font-weight: 600;">
+                                    <a href="/hr/employees/<%= doc.employeeId %>" style="color: #059669; text-decoration: none; font-weight: 600;">
                                         <%= emp.name %>
                                     </a>
                                     <span style="color: #94a3b8; font-size: 0.78rem;">(<%= emp.employeeCode %>)</span>
@@ -140,7 +140,7 @@
                                     <% } %>
                                 </td>
                                 <td style="padding: 14px 18px; text-align: center;">
-                                    <a href="<%= doc.filePath %>" target="_blank" download style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: #4f46e5; color: white; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                                    <a href="<%= doc.filePath %>" target="_blank" download style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: #059669; color: white; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
                                         <span>⬇️</span> Download
                                     </a>
                                 </td>
@@ -156,8 +156,8 @@
     <div id="uploadModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
         <div style="background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); margin: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                <h3 style="margin: 0; font-size: 1.25rem; color: #1e1b4b; font-weight: 700;">📤 Upload HR Document / Tax Form</h3>
-                <button type="button" onclick="document.getElementById('uploadModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">✕</button>
+                <h3 style="margin: 0; font-size: 1.25rem; color: #1e1b4b; font-weight: 700;"><i class="fa fa-cloud-arrow-up"></i> Upload HR Document / Tax Form</h3>
+                <button type="button" onclick="document.getElementById('uploadModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">&times;</button>
             </div>
             <form action="/hr/documents/upload" method="POST" enctype="multipart/form-data">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
@@ -206,7 +206,7 @@
                     <button type="button" onclick="document.getElementById('uploadModal').style.display='none'" style="padding: 10px 18px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; cursor: pointer;">
                         Cancel
                     </button>
-                    <button type="submit" style="padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                    <button type="submit" style="padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
                         Upload & Archive
                     </button>
                 </div>
@@ -223,9 +223,9 @@ function filterDocs(type) {
         btn.style.borderColor = '#cbd5e1';
     });
     const activeBtn = event.target;
-    activeBtn.style.background = '#e0e7ff';
-    activeBtn.style.color = '#4338ca';
-    activeBtn.style.borderColor = '#4f46e5';
+    activeBtn.style.background = '#ecfdf5';
+    activeBtn.style.color = '#065f46';
+    activeBtn.style.borderColor = '#059669';
 
     const rows = document.querySelectorAll('.doc-row');
     rows.forEach(row => {
@@ -285,7 +285,7 @@ async function submitLabTaxSettings(e) {
         const data = await res.json();
         if (data.success) {
             msg.style.color = '#16a34a';
-            msg.textContent = '✓ Laboratory Tax Settings Saved!';
+            msg.textContent = 'Laboratory Tax Settings Saved!';
             setTimeout(() => { msg.textContent = ''; }, 3000);
         } else {
             msg.style.color = '#dc2626';
@@ -296,7 +296,7 @@ async function submitLabTaxSettings(e) {
         msg.textContent = 'Network error saving settings';
     } finally {
         btn.disabled = false;
-        btn.textContent = '💾 Save Lab Tax Profile';
+        btn.textContent = '<i class="fa fa-floppy-disk"></i> Save Lab Tax Profile';
     }
 }
 
@@ -319,9 +319,9 @@ async function saveIndividualTin(empId, btn) {
         const data = await res.json();
         if (data.success) {
             btn.style.background = '#059669';
-            btn.textContent = '✓ Saved';
+            btn.textContent = 'Saved';
             setTimeout(() => {
-                btn.style.background = '#4f46e5';
+                btn.style.background = '#059669';
                 btn.textContent = 'Save';
                 btn.disabled = false;
             }, 1800);
@@ -345,7 +345,7 @@ async function saveIndividualTin(empId, btn) {
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 14px;">
             <div>
                 <h3 style="margin: 0; font-size: 1.3rem; color: #1e1b4b; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-                    <span>🏛️</span> Laboratory Tax Profile &amp; Employee TINs
+                    <i class="fa fa-building-columns"></i> Laboratory Tax Profile &amp; Employee TINs
                 </h3>
                 <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
                     Configure official BIR details for Gezyne Clinical Laboratory and update employee tax numbers.
@@ -357,7 +357,7 @@ async function saveIndividualTin(empId, btn) {
         <!-- Section 1: Laboratory Employer Tax Settings -->
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
             <h4 style="margin: 0 0 12px 0; font-size: 0.95rem; color: #1e1b4b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                <span>🏢</span> Laboratory BIR Employer Registration
+                <span><i class="fa fa-building"></i></span> Laboratory BIR Employer Registration
             </h4>
             
             <form id="labTaxForm" onsubmit="submitLabTaxSettings(event)">
@@ -392,7 +392,7 @@ async function saveIndividualTin(empId, btn) {
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span id="labTaxMsg" style="font-size: 0.82rem; font-weight: 600;"></span>
                     <button type="submit" id="btnSaveLabTax" style="padding: 8px 18px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.85rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
-                        💾 Save Lab Tax Profile
+                        <i class="fa fa-floppy-disk"></i> Save Lab Tax Profile
                     </button>
                 </div>
             </form>
@@ -402,7 +402,7 @@ async function saveIndividualTin(empId, btn) {
         <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h4 style="margin: 0; font-size: 0.95rem; color: #1e1b4b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-                    <span>👥</span> Employee BIR TIN Quick Manager
+                    <i class="fa fa-users"></i> Employee BIR TIN Quick Manager
                 </h4>
                 <span style="font-size: 0.78rem; color: #64748b;">
                     Update individual employee TINs directly
@@ -432,7 +432,7 @@ async function saveIndividualTin(empId, btn) {
                                         <input type="text" id="empTin_<%= emp.id %>" value="<%= emp.tinNumber || '' %>" placeholder="e.g. 123-456-789-000" style="padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.82rem; font-family: monospace; font-weight: 600; width: 140px;">
                                     </td>
                                     <td style="padding: 8px 12px; text-align: center;">
-                                        <button type="button" onclick="saveIndividualTin('<%= emp.id %>', this)" style="padding: 5px 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
+                                        <button type="button" onclick="saveIndividualTin('<%= emp.id %>', this)" style="padding: 5px 12px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer;">
                                             Save
                                         </button>
                                     </td>

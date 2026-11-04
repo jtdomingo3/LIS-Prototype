@@ -195,10 +195,10 @@
     </button>
     <div style="display: flex; gap: 10px; align-items: center;">
       <span style="font-size: 0.78rem; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 6px; font-weight: 600;">
-        ✓ Clearance Slip Generated • Ready to Print
+        Clearance Slip Generated • Ready to Print
       </span>
       <button onclick="window.print()" style="padding: 8px 20px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
-        <span>🖨️</span> Print Clearance Slip
+        <i class="fa fa-print"></i> Print Clearance Slip
       </button>
     </div>
   </div>
@@ -323,7 +323,7 @@
               </td>
               <td style="text-align: center;">
                 <span style="font-size: 10.5px; font-weight: bold; color: #166534;">
-                  <span class="chk-box">✓</span> Cleared
+                  <span class="chk-box">&#10003;</span> Cleared
                 </span>
               </td>
               <td style="text-align: center; vertical-align: bottom; padding-bottom: 4px;">
@@ -363,7 +363,7 @@
         <!-- Laboratory Owner Signature -->
         <div class="sig">
           <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 6px; font-size: 12px; font-weight: bold;">
-            <span><span class="chk-box">✓</span> APPROVED FOR FINAL RELEASE</span>
+            <span><span class="chk-box">&#10003;</span> APPROVED FOR FINAL RELEASE</span>
           </div>
           <div style="height: 34px; position: relative;">
             <% if (typeof owner !== 'undefined' && owner && owner.signature) { %>

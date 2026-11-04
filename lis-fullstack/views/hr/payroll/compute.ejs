@@ -12,9 +12,9 @@
     </div>
 
     <!-- Statutory Reference Card -->
-    <div style="background: rgba(79, 70, 229, 0.05); border: 1px solid #c7d2fe; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 14px; align-items: flex-start;">
+    <div style="background: rgba(5, 150, 105, 0.05); border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 14px; align-items: flex-start;">
         <span style="font-size: 1.5rem;">ℹ️</span>
-        <div style="font-size: 0.85rem; color: #3730a3; line-height: 1.5;">
+        <div style="font-size: 0.85rem; color: #065f46; line-height: 1.5;">
             <strong>Philippine Statutory Engine Active:</strong> Computations automatically apply 2024 SSS (14% EE/ER + WISP), PhilHealth (5% total premium rate), Pag-IBIG (₱200 cap), and BIR TRAIN Law withholding tax tables. Non-taxable de minimis allowances are protected from tax.
         </div>
     </div>
@@ -39,8 +39,8 @@
             <!-- Quick Presets for Semi-Monthly -->
             <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <span style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Quick Presets:</span>
-                <button type="button" onclick="setPreset('first')" style="padding: 4px 12px; border: 1px solid #a5b4fc; background: #eef2ff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #4338ca; cursor: pointer;">1st Cutoff (1–15)</button>
-                <button type="button" onclick="setPreset('second')" style="padding: 4px 12px; border: 1px solid #a5b4fc; background: #eef2ff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #4338ca; cursor: pointer;">2nd Cutoff (16–End)</button>
+                <button type="button" onclick="setPreset('first')" style="padding: 4px 12px; border: 1px solid #a5b4fc; background: #f0fdf4; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #065f46; cursor: pointer;">1st Cutoff (1–15)</button>
+                <button type="button" onclick="setPreset('second')" style="padding: 4px 12px; border: 1px solid #a5b4fc; background: #f0fdf4; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #065f46; cursor: pointer;">2nd Cutoff (16–End)</button>
                 <button type="button" onclick="setPreset('full')" style="padding: 4px 12px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #475569; cursor: pointer;">Full Month</button>
                 <span style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-left: 8px;">Month Switcher:</span>
                 <button type="button" onclick="shiftMonth(-1)" style="padding: 4px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #334155; cursor: pointer;" title="Previous Month">◀ Prev Month</button>
@@ -81,7 +81,7 @@
                 <h3 style="margin: 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700;">
                     2. Select Eligible Staff (<%= activeEmployees.length %> Active)
                 </h3>
-                <label style="font-size: 0.82rem; font-weight: 600; color: #4f46e5; cursor: pointer;">
+                <label style="font-size: 0.82rem; font-weight: 600; color: #059669; cursor: pointer;">
                     <input type="checkbox" id="selectAll" checked onchange="toggleSelectAll(this)" style="vertical-align: middle;"> Select All
                 </label>
             </div>
@@ -107,8 +107,8 @@
         <!-- Submit Button -->
         <div style="display: flex; justify-content: flex-end; gap: 12px;">
             <a href="/hr/payroll" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
-            <button type="submit" style="padding: 12px 32px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem;">
-                ⚡ Calculate & Save Drafts
+            <button type="submit" style="padding: 12px 32px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem;">
+                <i class="fa fa-bolt"></i> Calculate & Save Drafts
             </button>
         </div>
     </form>

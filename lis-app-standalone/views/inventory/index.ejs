@@ -83,11 +83,11 @@
 
     <select id="statusFilter" class="filter-select">
       <option value="">All Stock Levels</option>
-      <option value="critical">🚨 Critical Emergency Stock</option>
-      <option value="low-stock">⚠️ Low Stock Only</option>
-      <option value="expiring">🟡 Expiring Soon (&le;30d)</option>
-      <option value="expired">❌ Expired Lots</option>
-      <option value="open-vials">🔓 Active Open Vials</option>
+      <option value="critical">Critical Emergency Stock</option>
+      <option value="low-stock">Low Stock Only</option>
+      <option value="expiring">Expiring Soon (&le;30d)</option>
+      <option value="expired">Expired Lots</option>
+      <option value="open-vials">Active Open Vials</option>
     </select>
 
     <select id="sortFilter" class="filter-select">
@@ -328,7 +328,7 @@
             stockStatusText = 'Out of Stock';
           } else if (item.isCriticalStock) {
             stockBadgeClass = 'badge-danger';
-            stockStatusText = '🚨 CRITICAL';
+            stockStatusText = 'CRITICAL';
           } else if (item.isLowStock) {
             stockBadgeClass = 'badge-warning';
             stockStatusText = 'Low Stock';
@@ -435,7 +435,7 @@
   function confirmDeleteItem(itemId, itemName, totalStock, unit) {
     const modal = document.getElementById('modalDeleteItem');
     if (!modal) {
-      if (confirm(`⚠️ WARNING: Are you sure you want to permanently delete "${itemName}"?\n\nThis will remove the item catalog, all lot records, and historical audit entries.`)) {
+      if (confirm(`WARNING: Are you sure you want to permanently delete "${itemName}"?\n\nThis will remove the item catalog, all lot records, and historical audit entries.`)) {
         performDeleteItem(itemId);
       }
       return;

@@ -56,7 +56,7 @@
         <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
       <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-ai')" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
-        <i class="fas fa-robot" style="color:#8b5cf6;"></i>
+        <i class="fas fa-brain" style="color:#059669;"></i>
         <span>AI Assistant</span>
         <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
@@ -82,7 +82,9 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
             <div style="display:flex; align-items:center; gap:12px;">
-              <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#dcfce7; color:#16a34a; font-size:1.4em;">🏥</span>
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#dcfce7; color:#16a34a; font-size:1.2em;">
+                <i class="fa-solid fa-hospital-user"></i>
+              </span>
               <div>
                 <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Clinical & Reception Operational Settings</h4>
                 <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Manage doctor rotation schedules, payment verification requirements, and chemistry analyzer directories.</p>
@@ -90,7 +92,7 @@
             </div>
             <div>
               <span class="badge badge-success" style="font-size:0.85em; padding:6px 12px; display:inline-flex; align-items:center; gap:5px;">
-                <span>✓</span> Editable by All Users
+                <i class="fa-solid fa-check"></i> Editable by All Users
               </span>
             </div>
           </div>
@@ -148,14 +150,16 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
           <% if (!isMgmt) { %>
             <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
-              <span style="font-size:1.2em;">🔒</span>
+              <i class="fa-solid fa-lock" style="font-size:1.15em; color:#b45309; flex-shrink:0;"></i>
               <div>
                 <strong>Admin / Manager Access Required:</strong> Only administrators or managers can modify SSE stream configurations. These options are view-only for your account.
               </div>
             </div>
           <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e0f2fe; color:#0284c7; font-size:1.4em;">⚡</span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e0f2fe; color:#0284c7; font-size:1.2em;">
+              <i class="fa-solid fa-bolt-lightning"></i>
+            </span>
             <div>
               <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Server-Sent Events (SSE) Real-Time Stream Management</h4>
               <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Control live updates, page auto-refresh behavior, and connection timings across all LAN clients and workstations.</p>
@@ -203,18 +207,18 @@
               const isPageChecked = (prefix) => allowed.some(p => p === prefix || (p !== '/' && prefix.startsWith(p)));
               
               const sidebarPages = [
-                { key: 'dashboard', name: 'Dashboard', path: '/dashboard', icon: '📊', desc: 'Real-time counts & status summary' },
-                { key: 'reception', name: 'Reception', path: '/reception', icon: '🏥', desc: 'Queue & area station assignments' },
-                { key: 'patients', name: 'Patients', path: '/patients', icon: '👥', desc: 'Patient registrations list' },
-                { key: 'tests', name: 'Tests & Results', path: '/tests', icon: '🧪', desc: 'Specimen tracking & worksheets' },
-                { key: 'reports', name: 'Reports', path: '/reports', icon: '📋', desc: 'Diagnostic PDF reports' },
-                { key: 'inventory', name: 'Inventory', path: '/inventory', icon: '📦', desc: 'Stock movements & alerts' },
-                { key: 'signatures', name: 'Signature', path: '/signatures', icon: '✍️', desc: 'Digital signatory uploads' },
-                { key: 'worksheet', name: 'Worksheet', path: '/reports/worksheet', icon: '📊', desc: 'Batch test result worksheets' },
-                { key: 'templates', name: 'Templates', path: '/templates', icon: '📄', desc: 'Report format templates' },
-                { key: 'users', name: 'Users', path: '/users', icon: '👤', desc: 'User accounts & roles' },
-                { key: 'settings', name: 'Settings', path: '/settings', icon: '⚙️', desc: 'System configuration' },
-                { key: 'chatbot', name: 'GezyneBot AI', path: '/chatbot', icon: '🤖', desc: 'Clinical assistant queries' }
+                { key: 'dashboard', name: 'Dashboard', path: '/dashboard', icon: 'fa-solid fa-chart-line', desc: 'Real-time counts & status summary' },
+                { key: 'reception', name: 'Reception', path: '/reception', icon: 'fa-solid fa-hospital-user', desc: 'Queue & area station assignments' },
+                { key: 'patients', name: 'Patients', path: '/patients', icon: 'fa-solid fa-users', desc: 'Patient registrations list' },
+                { key: 'tests', name: 'Tests & Results', path: '/tests', icon: 'fa-solid fa-flask', desc: 'Specimen tracking & worksheets' },
+                { key: 'reports', name: 'Reports', path: '/reports', icon: 'fa-solid fa-file-waveform', desc: 'Diagnostic PDF reports' },
+                { key: 'inventory', name: 'Inventory', path: '/inventory', icon: 'fa-solid fa-boxes-stacked', desc: 'Stock movements & alerts' },
+                { key: 'signatures', name: 'Signature', path: '/signatures', icon: 'fa-solid fa-signature', desc: 'Digital signatory uploads' },
+                { key: 'worksheet', name: 'Worksheet', path: '/reports/worksheet', icon: 'fa-solid fa-table', desc: 'Batch test result worksheets' },
+                { key: 'templates', name: 'Templates', path: '/templates', icon: 'fa-solid fa-file-code', desc: 'Report format templates' },
+                { key: 'users', name: 'Users', path: '/users', icon: 'fa-solid fa-user-gear', desc: 'User accounts & roles' },
+                { key: 'settings', name: 'Settings', path: '/settings', icon: 'fa-solid fa-sliders', desc: 'System configuration' },
+                { key: 'chatbot', name: 'GezyneBot AI', path: '/chatbot', icon: 'fa-solid fa-notes-medical', desc: 'Clinical assistant queries' }
               ];
             %>
 
@@ -224,7 +228,7 @@
                   <input type="checkbox" name="sse_page_<%= item.key %>" class="sse-page-input" <%= isPageChecked(item.path) ? 'checked' : '' %> <%= !isMgmt ? 'disabled' : '' %> onchange="this.closest('.sse-page-checkbox-card').classList.toggle('checked', this.checked);" />
                   <div style="flex:1;">
                     <div style="display:flex; align-items:center; justify-content:space-between;">
-                      <strong style="color:#0f172a; font-size:0.95em;"><%= item.icon %> <%= item.name %></strong>
+                      <strong style="color:#0f172a; font-size:0.95em;"><i class="<%= item.icon %>" style="color:var(--primary-brand); margin-right:6px;"></i> <%= item.name %></strong>
                       <code style="font-size:0.75em; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:4px;"><%= item.path %></code>
                     </div>
                     <span style="display:block; font-size:0.8em; color:#64748b; margin-top:2px;"><%= item.desc %></span>
@@ -265,14 +269,16 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
           <% if (!isMgmt) { %>
             <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
-              <span style="font-size:1.2em;">🔒</span>
+              <i class="fa-solid fa-lock" style="font-size:1.15em; color:#b45309; flex-shrink:0;"></i>
               <div>
                 <strong>Admin / Manager Access Required:</strong> Only administrators or managers can modify thermal printer hardware names.
               </div>
             </div>
           <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#fef3c7; color:#d97706; font-size:1.4em;">🖨️</span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#fef3c7; color:#d97706; font-size:1.2em;">
+              <i class="fa-solid fa-print"></i>
+            </span>
             <div>
               <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Thermal Printer & Hardware Diagnostics</h4>
               <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Configure the direct thermal receipt / barcode printer and test hardware connection on demand.</p>
@@ -288,16 +294,17 @@
             <div class="field" style="margin:0;">
               <label>Test Print Format</label>
               <select id="printerTestType" style="width:100%;">
-                <option value="receipt">🧾 Standard Patient Queue / Receipt Slip</option>
-                <option value="barcode">🏷️ Barcode Specimen Sample Label</option>
+                <option value="receipt">Standard Patient Queue / Receipt Slip</option>
+                <option value="barcode">Barcode Specimen Sample Label</option>
               </select>
               <p class="note">Select the test payload format to send to the printer.</p>
             </div>
           </div>
 
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
-            <button type="button" class="button btn-primary" id="btnTestPrint" onclick="executeTestPrint()">
-              🖨️ Send Test Print to Printer
+            <button type="button" class="button btn-primary" id="btnTestPrint" onclick="executeTestPrint()" style="display:inline-flex; align-items:center; gap:8px;">
+              <i class="fa-solid fa-print"></i>
+              <span>Send Test Print to Printer</span>
             </button>
             <span id="testPrintStatusNote" style="color:#64748b; font-size:0.9em;">Click to test hardware communication and paper feed.</span>
           </div>
@@ -313,14 +320,16 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
           <% if (!isMgmt) { %>
             <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
-              <span style="font-size:1.2em;">🔒</span>
+              <i class="fa-solid fa-lock" style="font-size:1.15em; color:#b45309; flex-shrink:0;"></i>
               <div>
                 <strong>Admin / Manager Access Required:</strong> Only administrators or managers can update AI API keys or change the default model.
               </div>
             </div>
           <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#ede9fe; color:#7c3aed; font-size:1.4em;">🤖</span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#ecfdf5; color:#059669; font-size:1.2em;">
+              <i class="fa-solid fa-notes-medical"></i>
+            </span>
             <div>
               <h4 style="margin:0; font-size:1.15em; color:#0f172a;">GezyneBot Clinical AI Assistant</h4>
               <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Connect OpenRouter to provide intelligent laboratory diagnostic referencing, phlebotomy orders, and automated assistance.</p>
@@ -377,14 +386,16 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
           <% if (!isMgmt) { %>
             <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
-              <span style="font-size:1.2em;">🔒</span>
+              <i class="fa-solid fa-lock" style="font-size:1.15em; color:#b45309; flex-shrink:0;"></i>
               <div>
                 <strong>Admin / Manager Access Required:</strong> Automated backup retention policies and manual restore tools are restricted to administrators.
               </div>
             </div>
           <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#fce7f3; color:#db2777; font-size:1.4em;">💾</span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#f0f9ff; color:#0284c7; font-size:1.2em;">
+              <i class="fa-solid fa-database"></i>
+            </span>
             <div>
               <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Automated Backups & Storage Management</h4>
               <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Configure daily SQLite WAL checkpoints and rolling retention policies to protect clinical records.</p>
@@ -459,14 +470,16 @@
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
           <% if (!isMgmt) { %>
             <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
-              <span style="font-size:1.2em;">🔒</span>
+              <i class="fa-solid fa-lock" style="font-size:1.15em; color:#b45309; flex-shrink:0;"></i>
               <div>
                 <strong>Admin / Manager Access Required:</strong> Editing persistent environment variables (.env) and purging log files requires administrator permissions.
               </div>
             </div>
           <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e2e8f0; color:#475569; font-size:1.4em;">🌐</span>
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e2e8f0; color:#475569; font-size:1.2em;">
+              <i class="fa-solid fa-server"></i>
+            </span>
             <div>
               <h4 style="margin:0; font-size:1.15em; color:#0f172a;">System Environment & Log Diagnostics</h4>
               <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Review host network address, export audit logs, and edit persistent .env values.</p>
@@ -646,14 +659,14 @@ async function executeTestPrint() {
       banner.style.background = '#ecfdf5';
       banner.style.color = '#065f46';
       banner.style.border = '1px solid #a7f3d0';
-      banner.innerHTML = '<strong>✓ ' + escapeHtml(data.message || 'Print job sent successfully!') + '</strong>' + 
-        (data.output ? '<pre style="margin:6px 0 0 0; font-size:0.85em; opacity:0.85;">' + escapeHtml(data.output) + '</pre>' : '');
+      banner.innerHTML = '<div style="display:flex; align-items:flex-start; gap:8px;"><i class="fa-solid fa-circle-check" style="font-size:1.1em; color:#059669; margin-top:2px;"></i><div><strong>' + escapeHtml(data.message || 'Print job sent successfully!') + '</strong>' + 
+        (data.output ? '<pre style="margin:6px 0 0 0; font-size:0.85em; opacity:0.85;">' + escapeHtml(data.output) + '</pre>' : '') + '</div></div>';
       if (statusNote) statusNote.textContent = 'Last test print successful.';
     } else {
       banner.style.background = '#fef2f2';
       banner.style.color = '#991b1b';
       banner.style.border = '1px solid #fecaca';
-      banner.innerHTML = '<strong>✗ ' + escapeHtml(data.error || 'Print test failed.') + '</strong>';
+      banner.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-circle-xmark" style="font-size:1.1em; color:#dc2626;"></i><strong>' + escapeHtml(data.error || 'Print test failed.') + '</strong></div>';
       if (statusNote) statusNote.textContent = 'Printer error reported.';
     }
   } catch (err) {
@@ -661,10 +674,10 @@ async function executeTestPrint() {
     banner.style.background = '#fef2f2';
     banner.style.color = '#991b1b';
     banner.style.border = '1px solid #fecaca';
-    banner.innerHTML = '<strong>✗ Communication Error: ' + escapeHtml(err.message) + '</strong>';
+    banner.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-triangle-exclamation" style="font-size:1.1em; color:#dc2626;"></i><strong>Communication Error: ' + escapeHtml(err.message) + '</strong></div>';
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '🖨️ Send Test Print to Printer';
+    btn.innerHTML = '<i class="fa-solid fa-print"></i><span>Send Test Print to Printer</span>';
   }
 }
 
@@ -693,7 +706,7 @@ async function testAiConnection() {
   fb.style.background = '#f1f5f9';
   fb.style.color = '#334155';
   fb.style.border = '1px solid #cbd5e1';
-  fb.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Testing connection to OpenRouter...';
+  fb.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Testing connection to OpenRouter...';
   btn.disabled = true;
 
   try {
@@ -710,18 +723,18 @@ async function testAiConnection() {
       fb.style.background = '#ecfdf5';
       fb.style.color = '#065f46';
       fb.style.border = '1px solid #a7f3d0';
-      fb.innerHTML = '<strong>✓ ' + escapeHtml(data.message || 'Connection successful! OpenRouter responded.') + '</strong>';
+      fb.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-circle-check" style="color:#059669;"></i><strong>' + escapeHtml(data.message || 'Connection successful! OpenRouter responded.') + '</strong></div>';
     } else {
       fb.style.background = '#fef2f2';
       fb.style.color = '#991b1b';
       fb.style.border = '1px solid #fecaca';
-      fb.innerHTML = '<strong>✗ ' + escapeHtml(data.error || 'Connection failed.') + '</strong>';
+      fb.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-circle-xmark" style="color:#dc2626;"></i><strong>' + escapeHtml(data.error || 'Connection failed.') + '</strong></div>';
     }
   } catch (err) {
     fb.style.background = '#fef2f2';
     fb.style.color = '#991b1b';
     fb.style.border = '1px solid #fecaca';
-    fb.innerHTML = '<strong>✗ Network error: ' + escapeHtml(err.message) + '</strong>';
+    fb.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-triangle-exclamation" style="color:#dc2626;"></i><strong>Network error: ' + escapeHtml(err.message) + '</strong></div>';
   } finally {
     btn.disabled = false;
   }

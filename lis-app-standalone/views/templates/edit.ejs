@@ -245,6 +245,7 @@
   <h3><i class="fa fa-edit"></i> Edit Template</h3>
 
   <form id="editTemplateForm" action="/templates/<%= template.id %>?_method=PUT" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <!-- Basic Info -->
     <div class="section-header">
       <h4><i class="fa fa-info-circle"></i> Basic Information</h4>

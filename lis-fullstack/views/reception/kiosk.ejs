@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🏥 Patient Queue Display - LIS</title>
+  <title>Patient Queue Display - LIS</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192x192.png">
@@ -60,12 +60,12 @@
       --brand-teal: #0d9488;
       --brand-teal-border: #99f6e4;
       --accent-blue: #3b82f6;
-      --accent-purple: #8b5cf6;
+      --accent-purple: #0284c7;
       --accent-pink: #ec4899;
       --accent-amber: #f59e0b;
       --accent-rose: #f43f5e;
       --accent-sky: #0ea5e9;
-      --accent-indigo: #6366f1;
+      --accent-indigo: #0d9488;
       --accent-lime: #84cc16;
       /* Utility */
       --text-dark: #1e293b;
@@ -86,7 +86,7 @@
 
     body {
       font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 25%, #fef3c7 50%, #fce7f3 75%, #e0e7ff 100%);
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 35%, #fffbeb 70%, #ecfdf5 100%);
       background-size: 400% 400%;
       animation: bgShift 20s ease infinite;
       min-height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
@@ -302,11 +302,11 @@
     .area-card:nth-child(10n+1)  { --card-accent: #059669; --card-accent-light: #d1fae5; --card-accent-glow: rgba(5,150,105,0.15); }
     .area-card:nth-child(10n+2)  { --card-accent: #3b82f6; --card-accent-light: #dbeafe; --card-accent-glow: rgba(59,130,246,0.15); }
     .area-card:nth-child(10n+3)  { --card-accent: #f97316; --card-accent-light: #ffedd5; --card-accent-glow: rgba(249,115,22,0.15); }
-    .area-card:nth-child(10n+4)  { --card-accent: #8b5cf6; --card-accent-light: #ede9fe; --card-accent-glow: rgba(139,92,246,0.15); }
+    .area-card:nth-child(10n+4)  { --card-accent: #0284c7; --card-accent-light: #e0f2fe; --card-accent-glow: rgba(2,132,199,0.15); }
     .area-card:nth-child(10n+5)  { --card-accent: #ec4899; --card-accent-light: #fce7f3; --card-accent-glow: rgba(236,72,153,0.15); }
     .area-card:nth-child(10n+6)  { --card-accent: #0ea5e9; --card-accent-light: #e0f2fe; --card-accent-glow: rgba(14,165,233,0.15); }
     .area-card:nth-child(10n+7)  { --card-accent: #f59e0b; --card-accent-light: #fef3c7; --card-accent-glow: rgba(245,158,11,0.15); }
-    .area-card:nth-child(10n+8)  { --card-accent: #6366f1; --card-accent-light: #e0e7ff; --card-accent-glow: rgba(99,102,241,0.15); }
+    .area-card:nth-child(10n+8)  { --card-accent: #0d9488; --card-accent-light: #f0fdf4; --card-accent-glow: rgba(13,148,136,0.15); }
     .area-card:nth-child(10n+9)  { --card-accent: #14b8a6; --card-accent-light: #ccfbf1; --card-accent-glow: rgba(20,184,166,0.15); }
     .area-card:nth-child(10n+10) { --card-accent: #f43f5e; --card-accent-light: #ffe4e6; --card-accent-glow: rgba(244,63,94,0.15); }
 
@@ -518,7 +518,7 @@
       align-items: center;
       gap: 20px;
       border-top: 3px solid transparent;
-      border-image: linear-gradient(90deg, #059669, #3b82f6, #8b5cf6, #ec4899, #f97316) 1;
+      border-image: linear-gradient(90deg, #059669, #0284c7, #10b981, #f97316) 1;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
       transition: transform 0.3s ease, opacity 0.3s ease;
     }
@@ -1703,7 +1703,7 @@
         const audioReady = await initAudio();
         soundEnabled = true;
         soundToggle.className = 'sound-btn enabled';
-        soundToggle.innerHTML = '🔔 Sound Enabled';
+        soundToggle.innerHTML = '<i class="fa-solid fa-volume-high" style="margin-right:6px;"></i> Sound Enabled';
         console.log('[Kiosk] Sound auto-enabled');
       } catch (e) {
         console.log('[Kiosk] Auto-enable failed, waiting for user interaction');

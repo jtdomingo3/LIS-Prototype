@@ -36,7 +36,8 @@
     </a>
   </div>
 
-  <form action="/users/<%= user.id %>?_method=PUT" method="POST" enctype="multipart/form-data">
+  <form action="/users/<%= user.id %>?_method=PUT&_csrf=<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" method="POST" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div class="user-form-grid">
       
       <!-- Left Column: Account Details -->

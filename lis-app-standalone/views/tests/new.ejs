@@ -422,7 +422,7 @@
               <% if (patients && patients.length) { %>
                 <% patients.forEach(p => { %>
                   <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %> data-age="<%= p.age !== undefined && p.age !== null ? p.age : '' %>" data-dob="<%= p.dateOfBirth || '' %>" data-hmo="<%= p.healthInsuranceConsent ? (p.healthInsuranceProvider || 'Health Card') : '' %>" data-patient-code="<%= p.patientCode || p.patientId || '' %>">
-                    <%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)<%= p.healthInsuranceConsent ? ' [💳 ' + (p.healthInsuranceProvider || 'HMO') + ']' : '' %>
+                    <%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)<%= p.healthInsuranceConsent ? ' [' + (p.healthInsuranceProvider || 'HMO') + ']' : '' %>
                   </option>
                 <% }) %>
               <% } %>
@@ -436,7 +436,7 @@
                 This patient is enrolled with <strong id="hmoNoticeProvider">HMO</strong>. Standard flow requires an approved LOA before assigning tests.
               </div>
               <div style="margin-top: 6px;">
-                <a id="hmoNoticeLink" href="/healthcard" class="button" style="background: #6366f1; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.82em; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                <a id="hmoNoticeLink" href="/healthcard" class="button" style="background: #0284c7; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.82em; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
                   <span>Go to Health Card Claims (Approve LOA)</span> <i class="fa fa-arrow-right"></i>
                 </a>
               </div>

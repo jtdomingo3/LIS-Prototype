@@ -12,7 +12,7 @@
     <% } %>
 
     <!-- Welcome Header Card -->
-    <div style="background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%); border-radius: 16px; padding: 28px; color: white; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.2); position: relative; overflow: hidden;">
+    <div style="background: linear-gradient(135deg, #312e81 0%, #065f46 50%, #10b981 100%); border-radius: 16px; padding: 28px; color: white; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(5, 150, 105, 0.2); position: relative; overflow: hidden;">
         <div style="position: absolute; right: -20px; bottom: -30px; font-size: 10rem; opacity: 0.08; user-select: none;">
             🩺
         </div>
@@ -33,9 +33,9 @@
                     <%= employee.position || 'Laboratory Staff' %> • <%= employee.department || 'Clinical Laboratory' %>
                 </p>
                 <div style="margin-top: 10px; font-size: 0.82rem; opacity: 0.8; display: flex; gap: 16px; flex-wrap: wrap;">
-                    <span>📅 Date Hired: <strong><%= employee.dateHired || 'N/A' %></strong></span>
-                    <span>🏢 Type: <strong><%= employee.employmentType || 'Regular' %></strong></span>
-                    <span>🏦 TIN: <strong><%= employee.tin || 'N/A' %></strong></span>
+                    <span><i class="fa fa-calendar-day"></i> Date Hired: <strong><%= employee.dateHired || 'N/A' %></strong></span>
+                    <span><i class="fa fa-building"></i> Type: <strong><%= employee.employmentType || 'Regular' %></strong></span>
+                    <span><i class="fa fa-landmark"></i> TIN: <strong><%= employee.tin || 'N/A' %></strong></span>
                 </div>
             </div>
 
@@ -45,14 +45,14 @@
                     <span>⏱️</span> My DTR (Time In/Out)
                 </a>
                 <button onclick="document.getElementById('leaveModal').style.display='flex'" style="padding: 10px 18px; background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 10px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>✈️</span> Request Leave
+                    <i class="fa fa-plane-departure"></i> Request Leave
                 </button>
                 <a href="/hr/my/payslips" style="padding: 10px 18px; background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>💵</span> All Payslips
+                    <i class="fa fa-money-bill-wave"></i> All Payslips
                 </a>
                 <% if (isManagement) { %>
                     <a href="/hr" style="padding: 10px 18px; background: #0f172a; color: white; border-radius: 10px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                        <span>⚙️</span> Management Panel →
+                        <i class="fa fa-gear"></i> Management Panel →
                     </a>
                 <% } %>
             </div>
@@ -62,10 +62,10 @@
     <!-- Personal Overview Cards -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 24px;">
         <!-- Base Salary / Rate -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.04);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Duty Compensation</span>
-                <span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Rate</span>
+                <span style="background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Rate</span>
             </div>
             <div style="font-size: 1.6rem; font-weight: 800; color: #059669;">
                 <% if (employee.payType === 'Commission Only' || employee.isPayrollExempt) { %>
@@ -88,12 +88,12 @@
         </div>
 
         <!-- Leaves Used -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.04);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Leaves Used</span>
-                <span style="background: #ede9fe; color: #7c3aed; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Logged</span>
+                <span style="background: #f0fdf4; color: #059669; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Logged</span>
             </div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: #7c3aed;">
+            <div style="font-size: 1.6rem; font-weight: 800; color: #059669;">
                 <%= (typeof leavesUsed !== 'undefined') ? leavesUsed : 0 %> <span style="font-size: 1rem; color: #64748b; font-weight: 600;">Day<%= (typeof leavesUsed !== 'undefined' && leavesUsed === 1) ? '' : 's' %></span>
             </div>
             <div style="font-size: 0.78rem; color: #64748b; margin-top: 4px;">
@@ -102,7 +102,7 @@
         </div>
 
         <!-- Latest Payslip -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.04);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Latest Net Pay</span>
                 <span style="background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Take-Home</span>
@@ -124,20 +124,20 @@
         </div>
 
         <!-- Self-Service Documents -->
-        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.04);">
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Printable Forms</span>
                 <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Self-Service</span>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-                <a href="/hr/print/coe/<%= employee.id %>" style="padding: 4px 10px; background: #e0e7ff; color: #4338ca; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
-                    📄 COE
+                <a href="/hr/print/coe/<%= employee.id %>" style="padding: 4px 10px; background: #ecfdf5; color: #065f46; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                    <i class="fa fa-file-lines"></i> COE
                 </a>
                 <a href="/hr/print/clearance/<%= employee.id %>" style="padding: 4px 10px; background: #fef3c7; color: #92400e; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
-                    📋 Clearance
+                    <i class="fa fa-clipboard-list"></i> Clearance
                 </a>
                 <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" style="padding: 4px 10px; background: #f1f5f9; color: #475569; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
-                    📑 BIR 2316
+                    <i class="fa fa-file-invoice"></i> BIR 2316
                 </a>
             </div>
         </div>
@@ -150,18 +150,18 @@
             <div style="padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                        <span>💰</span> My Payslips
+                        <i class="fa fa-money-bill-wave" style="margin-right:4px;"></i> My Payslips
                     </h3>
                     <p style="margin: 2px 0 0 0; color: #64748b; font-size: 0.82rem;">Recent payroll cycles, statutory breakdown & printable vouchers</p>
                 </div>
-                <a href="/hr/my/payslips" style="font-size: 0.85rem; color: #4f46e5; text-decoration: none; font-weight: 600;">
+                <a href="/hr/my/payslips" style="font-size: 0.85rem; color: #059669; text-decoration: none; font-weight: 600;">
                     View All →
                 </a>
             </div>
 
             <% if (!payslips || payslips.length === 0) { %>
                 <div style="padding: 40px; text-align: center; color: #94a3b8;">
-                    <div style="font-size: 2.5rem; margin-bottom: 8px;">📑</div>
+                    <div style="font-size: 2.5rem; margin-bottom: 8px;"><i class="fa fa-file-invoice"></i></div>
                     <div style="font-weight: 600; color: #475569;">No Payslips Issued Yet</div>
                     <p style="font-size: 0.85rem; margin-top: 4px;">Once HR processes and approves your payroll, your payslips will appear here.</p>
                 </div>
@@ -202,8 +202,8 @@
                                         ₱<%= (Number(p.netPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
                                     </td>
                                     <td style="padding: 14px 18px; text-align: center;">
-                                        <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; background: #ede9fe; color: #6d28d9; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 700;">
-                                            <span>🖨️</span> Payslip
+                                        <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; background: #f0fdf4; color: #065f46; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 700;">
+                                            <i class="fa fa-print"></i> Payslip
                                         </a>
                                     </td>
                                 </tr>
@@ -221,11 +221,11 @@
                 <div style="padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                            <span>✈️</span> Leave Requests
+                            <i class="fa fa-plane-departure"></i> Leave Requests
                         </h3>
                         <p style="margin: 2px 0 0 0; color: #64748b; font-size: 0.82rem;">Track vacation, sick, and emergency leave status</p>
                     </div>
-                    <button onclick="document.getElementById('leaveModal').style.display='flex'" style="padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
+                    <button onclick="document.getElementById('leaveModal').style.display='flex'" style="padding: 6px 12px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
                         + Request
                     </button>
                 </div>
@@ -254,21 +254,21 @@
                                 </div>
                                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
                                     <% if (l.status === 'Approved') { %>
-                                        <span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">✓ Approved</span>
+                                        <span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">Approved</span>
                                     <% } else if (l.status === 'Rejected') { %>
-                                        <span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">✕ Rejected</span>
+                                        <span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">&times; Rejected</span>
                                     <% } else { %>
                                         <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⏳ Pending</span>
                                     <% } %>
                                     <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                        <a href="/hr/print/leave/<%= l.id %>" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f1f5f9; color: #4338ca; border-radius: 4px; text-decoration: none; font-size: 0.72rem; font-weight: 700; border: 1px solid #e0e7ff;">
-                                            <span>🖨️</span> Form
+                                        <a href="/hr/print/leave/<%= l.id %>" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f1f5f9; color: #065f46; border-radius: 4px; text-decoration: none; font-size: 0.72rem; font-weight: 700; border: 1px solid #ecfdf5;">
+                                            <i class="fa fa-print"></i> Form
                                         </a>
                                         <% if (l.status === 'Pending') { %>
                                             <form action="/hr/my/leaves/<%= l.id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Cancel and delete this pending leave request?');">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                                 <button type="submit" style="display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; background: #fef2f2; color: #dc2626; border-radius: 4px; font-size: 0.72rem; font-weight: 700; border: 1px solid #fecaca; cursor: pointer;" title="Delete pending leave request">
-                                                    <span>🗑️</span> Delete
+                                                    <i class="fa fa-trash-can"></i> Delete
                                                 </button>
                                             </form>
                                         <% } %>
@@ -284,7 +284,7 @@
             <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
                 <div style="padding: 18px 22px; border-bottom: 1px solid #f1f5f9;">
                     <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                        <span>📁</span> My Documents & Tax Forms
+                        <i class="fa fa-folder"></i> My Documents & Tax Forms
                     </h3>
                     <p style="margin: 2px 0 0 0; color: #64748b; font-size: 0.82rem;">HR contracts, BIR Form 2316, and uploaded employee records</p>
                 </div>
@@ -298,7 +298,7 @@
                         <% documents.forEach(function(doc) { %>
                             <div style="padding: 10px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 1.3rem;">📄</span>
+                                    <span style="font-size: 1.3rem;"><i class="fa fa-file-lines"></i></span>
                                     <div>
                                         <div style="font-weight: 600; color: #1e293b; font-size: 0.88rem;"><%= doc.title %></div>
                                         <div style="font-size: 0.75rem; color: #64748b;">
@@ -321,14 +321,14 @@
     <div id="leaveModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
         <div style="background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); margin: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                <h3 style="margin: 0; font-size: 1.25rem; color: #1e1b4b; font-weight: 700;">✈️ Request Leave of Absence</h3>
-                <button type="button" onclick="document.getElementById('leaveModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">✕</button>
+                <h3 style="margin: 0; font-size: 1.25rem; color: #1e1b4b; font-weight: 700;"><i class="fa fa-plane-departure"></i> Request Leave of Absence</h3>
+                <button type="button" onclick="document.getElementById('leaveModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">&times;</button>
             </div>
             <form action="/hr/my/leaves" method="POST">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                 <!-- Policy Notice -->
                 <div style="font-size: 0.78rem; background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid #fecaca; line-height: 1.45;">
-                    <strong>⚠️ Laboratory Policy Notice:</strong> Gezyne Clinical Laboratory does not provide paid leaves. All leaves of absence (Vacation, Sick, Emergency, etc.) are non-paid (Leave Without Pay / LWOP). Leave days will be logged in your DTR for attendance reconciliation. Once submitted, print the official Leave Form for <strong>Laboratory Owner</strong> authorization.
+                    <strong> Laboratory Policy Notice:</strong> Gezyne Clinical Laboratory does not provide paid leaves. All leaves of absence (Vacation, Sick, Emergency, etc.) are non-paid (Leave Without Pay / LWOP). Leave days will be logged in your DTR for attendance reconciliation. Once submitted, print the official Leave Form for <strong>Laboratory Owner</strong> authorization.
                 </div>
 
                 <div style="margin-bottom: 14px;">
@@ -366,7 +366,7 @@
                     <button type="button" onclick="document.getElementById('leaveModal').style.display='none'" style="padding: 10px 18px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; cursor: pointer;">
                         Cancel
                     </button>
-                    <button type="submit" style="padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                    <button type="submit" style="padding: 10px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
                         Submit Request
                     </button>
                 </div>

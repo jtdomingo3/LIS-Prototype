@@ -127,7 +127,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 12px;">
             <div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <a href="/hr/my" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #e0e7ff; color: #4338ca; border-radius: 8px; font-weight: 700; font-size: 0.85rem; text-decoration: none;">
+                    <a href="/hr/my" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #ecfdf5; color: #065f46; border-radius: 8px; font-weight: 700; font-size: 0.85rem; text-decoration: none;">
                         ← Back to My HR Portal
                     </a>
                     <% if (isManagement) { %>
@@ -137,7 +137,7 @@
                     <% } %>
                 </div>
                 <h2 style="margin: 8px 0 0 0; font-size: 1.45rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <span>🇵🇭</span> Civil Service Form No. 48 (Daily Time Record)
+                     Civil Service Form No. 48 (Daily Time Record)
                 </h2>
                 <div style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">
                     Official Philippine Standard DTR for <strong><%= employee.name %></strong> (<%= employee.position || 'Staff' %> • <%= employee.department %>)
@@ -171,21 +171,21 @@
                 <!-- View Mode Toggle (1-Up vs 2-Up Side-by-Side) -->
                 <div style="display: inline-flex; background: #e2e8f0; border-radius: 8px; padding: 2px;">
                     <button type="button" id="btnMode1Up" onclick="switchDtrViewMode('1up')" style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-                        📄 Single Card
+                        <i class="fa fa-file-lines"></i> Single Card
                     </button>
                     <button type="button" id="btnMode2Up" onclick="switchDtrViewMode('2up')" style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">
-                        📑 2-Up (PH CSC Standard)
+                        <i class="fa fa-file-invoice"></i> 2-Up (PH CSC Standard)
                     </button>
                 </div>
 
                 <!-- Log Punch Modal Button -->
                 <button type="button" onclick="openDtrModal('', '08:00', '12:00', '13:00', '17:00', '')" style="height: 38px; padding: 0 14px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);">
-                    <span>➕</span> Add / Correct Punch
+                    <i class="fa fa-plus"></i> Add / Correct Punch
                 </button>
 
                 <!-- Print Form 48 Button -->
                 <button type="button" onclick="printPhDtr()" style="height: 38px; padding: 0 14px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);">
-                    <span>🖨️</span> Print CSC Form 48
+                    <i class="fa fa-print"></i> Print CSC Form 48
                 </button>
             </div>
         </div>
@@ -195,7 +195,7 @@
             <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
                 <span><strong>Completed Duties:</strong> <span style="color: #059669; font-weight: 800;"><%= stats.completedDuties %></span> (<%= stats.full8HourDuties %> Full 8-hr)</span>
                 <span style="color: #cbd5e1;">|</span>
-                <span><strong>Valid Duty Rendered:</strong> <span style="color: #4f46e5; font-weight: 800;"><%= Number(stats.totalRenderedHours || 0).toFixed(1) %> hrs</span></span>
+                <span><strong>Valid Duty Rendered:</strong> <span style="color: #059669; font-weight: 800;"><%= Number(stats.totalRenderedHours || 0).toFixed(1) %> hrs</span></span>
                 <% if (stats.totalOvertimeHours > 0) { %>
                     <span style="color: #2563eb; font-weight: 700; font-size: 0.78rem;">(+<%= Number(stats.totalOvertimeHours).toFixed(1) %>h Approved OT)</span>
                 <% } %>
@@ -227,7 +227,7 @@
                     <% } %>
                 </div>
             <% } else { %>
-                <span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                <span style="background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
                     Doctor Retainer (Exempt from 5-day week limit)
                 </span>
             <% } %>
@@ -356,7 +356,7 @@
                                         data-rawhours="<%= r ? (r.rawTotalHours || r.totalHours) : '' %>"
                                         onclick="event.stopPropagation(); openDtrModalFromBtn(this);"
                                         style="background: transparent; border: none; cursor: pointer; padding: 2px;">
-                                        ✏️
+                                        <i class="fa fa-pencil"></i>
                                     </button>
                                 </td>
                             <% } else if (row.isWeekend) { %>
@@ -367,7 +367,7 @@
                                 <td class="b-solid-r"></td>
                                 <td></td>
                                 <td class="no-print" style="text-align: center; padding: 0;">
-                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
                                 </td>
                             <% } else { %>
                                 <!-- Weekday with no duty logged yet -->
@@ -378,7 +378,7 @@
                                 <td class="b-solid-r"></td>
                                 <td></td>
                                 <td class="no-print" style="text-align: center; padding: 0;">
-                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
                                 </td>
                             <% } %>
                         </tr>
@@ -548,7 +548,7 @@
                                         data-rawhours="<%= r ? (r.rawTotalHours || r.totalHours) : '' %>"
                                         onclick="event.stopPropagation(); openDtrModalFromBtn(this);"
                                         style="background: transparent; border: none; cursor: pointer; padding: 2px;">
-                                        ✏️
+                                        <i class="fa fa-pencil"></i>
                                     </button>
                                 </td>
                             <% } else if (row.isWeekend) { %>
@@ -558,7 +558,7 @@
                                 <td class="b-solid-r"></td>
                                 <td></td>
                                 <td class="no-print" style="text-align: center; padding: 0;">
-                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
                                 </td>
                             <% } else { %>
                                 <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
@@ -568,7 +568,7 @@
                                 <td class="b-solid-r"></td>
                                 <td></td>
                                 <td class="no-print" style="text-align: center; padding: 0;">
-                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
                                 </td>
                             <% } %>
                         </tr>
@@ -652,11 +652,11 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; text-transform: uppercase;">Duty Date *</label>
                         <div style="display: flex; gap: 6px;">
-                            <button type="button" onclick="setStandardDtrHours()" style="padding: 3px 8px; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
+                            <button type="button" onclick="setStandardDtrHours()" style="padding: 3px 8px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
                                 ⏰ Standard (8AM - 5PM)
                             </button>
                             <button type="button" onclick="clearDtrHours()" style="padding: 3px 8px; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.74rem; font-weight: 600; cursor: pointer;">
-                                ⚪ Clear (Off)
+                                Clear (Off)
                             </button>
                         </div>
                     </div>
@@ -665,8 +665,8 @@
 
                 <!-- Morning Shift (AM) -->
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-                    <div style="font-size: 0.8rem; font-weight: 700; color: #4338ca; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                        <span>🌅</span> Morning Shift (A. M.)
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #065f46; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa fa-sun" style="color:#f59e0b; margin-right:4px;"></i> Morning Shift (A. M.)
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div>
@@ -683,7 +683,7 @@
                 <!-- Afternoon Shift (PM) -->
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
                     <div style="font-size: 0.8rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                        <span>☀️</span> Afternoon Shift (P. M.)
+                        <i class="fa fa-sun" style="color:#ea580c; margin-right:4px;"></i> Afternoon Shift (P. M.)
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div>
@@ -712,7 +712,7 @@
                 <% if (isManagement) { %>
                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px 14px;">
                         <div style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-                            <span>⚙️ Supervisor Overtime Approval</span>
+                            <span><i class="fa fa-gear"></i> Supervisor Overtime Approval</span>
                             <span style="font-size: 0.7rem; background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px; font-weight: 700;">Owner / Manager / HR</span>
                         </div>
                         
@@ -752,7 +752,7 @@
                     Cancel
                 </button>
                 <button type="submit" style="padding: 8px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);">
-                    <span>💾</span> Save Record
+                    <span><i class="fa fa-floppy-disk"></i></span> Save Record
                 </button>
             </div>
         </form>
@@ -924,14 +924,14 @@ function recomputeDtrModalHours() {
         hoursEl.style.color = '#065f46';
 
         if (isApproved && approvedOt > 0) {
-            badgeEl.innerHTML = '✅ <strong>8-Hour Valid Duty Completed + ' + approvedOt.toFixed(2) + ' hrs Approved Overtime (' + creditedHours.toFixed(2) + ' hrs total credited)</strong>';
+            badgeEl.innerHTML = '<i class="fa fa-circle-check" style="color:#059669; margin-right:4px;"></i> <strong>8-Hour Valid Duty Completed + ' + approvedOt.toFixed(2) + ' hrs Approved Overtime (' + creditedHours.toFixed(2) + ' hrs total credited)</strong>';
             badgeEl.style.color = '#065f46';
         } else {
             let noteStr = '';
             if (rawTotalHours > 8.0) {
                 noteStr = '<div style="font-size: 0.74rem; color: #475569; margin-top: 4px; font-weight: normal;">ℹ️ Actual punch shift: <strong>' + rawTotalHours.toFixed(2) + ' hrs</strong>. Per laboratory policy, valid duty is counted as <strong>8.0 hrs</strong>. Any overtime requires head/manager approval to be credited.</div>';
             }
-            badgeEl.innerHTML = '✅ <strong>8-Hour Valid Duty Completed (1.0 Duty Credit • 8.0 hrs credited)</strong>' + noteStr;
+            badgeEl.innerHTML = '<i class="fa fa-circle-check" style="color:#059669; margin-right:4px;"></i> <strong>8-Hour Valid Duty Completed (1.0 Duty Credit • 8.0 hrs credited)</strong>' + noteStr;
             badgeEl.style.color = '#065f46';
         }
     } else if (rawTotalHours > 0) {
@@ -939,7 +939,7 @@ function recomputeDtrModalHours() {
         boxEl.style.borderColor = '#fde68a';
         hoursEl.style.color = '#92400e';
         const shortMins = 480 - totalMinutes;
-        badgeEl.innerHTML = '⚠️ <strong>Undertime: ' + rawTotalHours.toFixed(1) + ' hrs (' + shortMins + ' mins short of 8-hour duty)</strong>';
+        badgeEl.innerHTML = ' <strong>Undertime: ' + rawTotalHours.toFixed(1) + ' hrs (' + shortMins + ' mins short of 8-hour duty)</strong>';
         badgeEl.style.color = '#92400e';
     } else {
         boxEl.style.background = '#f8fafc';

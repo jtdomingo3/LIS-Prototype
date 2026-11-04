@@ -6,7 +6,7 @@
             <div>
                 <h2 style="margin: 0; font-size: 1.5rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                     Payroll Details — <%= employee ? employee.name : 'Staff' %>
-                    <span style="font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; <%= payroll.status === 'Approved' ? 'background: #dcfce7; color: #166534;' : (payroll.status === 'Paid' ? 'background: #e0e7ff; color: #3730a3;' : 'background: #fef3c7; color: #92400e;') %>">
+                    <span style="font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; <%= payroll.status === 'Approved' ? 'background: #dcfce7; color: #166534;' : (payroll.status === 'Paid' ? 'background: #ecfdf5; color: #065f46;' : 'background: #fef3c7; color: #92400e;') %>">
                         <%= payroll.status %>
                     </span>
                 </h2>
@@ -20,25 +20,25 @@
                 <form action="/hr/payroll/<%= payroll.id %>/approve" method="POST" style="display: inline;">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
-                        ✓ Approve Payroll
+                        <i class="fa fa-circle-check" style="margin-right:6px;"></i> Approve Payroll
                     </button>
                 </form>
             <% } else if (payroll.status === 'Approved') { %>
                 <form action="/hr/payroll/<%= payroll.id %>/mark-paid" method="POST" style="display: inline;">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
-                        💵 Mark as Disbursed / Paid
+                        <i class="fa fa-money-bill-wave" style="margin-right:6px;"></i> Mark as Disbursed / Paid
                     </button>
                 </form>
             <% } %>
             <a href="/hr/print/payslip/<%= payroll.id %>" target="_blank" class="btn btn-secondary" style="padding: 8px 16px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>🖨️</span> Print Payslip
+                <i class="fa fa-print"></i> Print Payslip
             </a>
             <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
-                <form action="/hr/payroll/<%= payroll.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('⚠️ Delete this payroll record for <%= employee ? employee.name : 'staff' %>?\n\nThis will also remove the linked expense entry. This action cannot be undone.');">
+                <form action="/hr/payroll/<%= payroll.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete this payroll record for <%= employee ? employee.name : 'staff' %>?\n\nThis will also remove the linked expense entry. This action cannot be undone.');">
                     <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" style="padding: 8px 16px; background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                        🗑️ Delete Record
+                        <i class="fa fa-trash-can" style="margin-right:6px;"></i> Delete Record
                     </button>
                 </form>
             <% } %>
@@ -46,7 +46,7 @@
     </div>
 
     <!-- Payout Highlight Card -->
-    <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05); margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; text-align: center;">
+    <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #ecfdf5; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.05); margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; text-align: center;">
         <div>
             <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Gross Earnings</div>
             <div style="font-size: 1.6rem; font-weight: 800; color: #0f172a; margin-top: 4px;">
@@ -67,7 +67,7 @@
         </div>
         <div>
             <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Company Cost</div>
-            <div style="font-size: 1.6rem; font-weight: 800; color: #4f46e5; margin-top: 4px;">
+            <div style="font-size: 1.6rem; font-weight: 800; color: #059669; margin-top: 4px;">
                 ₱<%= payroll.totalEmployerCost.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
             </div>
         </div>
@@ -180,7 +180,7 @@
 
     <!-- Statutory Employer Contributions (Company Burden) -->
     <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
-        <h3 style="margin: 0 0 14px 0; font-size: 1.05rem; color: #4f46e5; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+        <h3 style="margin: 0 0 14px 0; font-size: 1.05rem; color: #059669; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
             Employer Statutory Contributions (Laboratory Operating Cost)
         </h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; font-size: 0.88rem;">
@@ -196,9 +196,9 @@
                 <span style="color: #64748b; font-size: 0.75rem; font-weight: 700;">PAG-IBIG EMPLOYER</span>
                 <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; margin-top: 4px;">₱<%= (Number(payroll.pagibigEmployerShare) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
             </div>
-            <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; border: 1px solid #c7d2fe;">
-                <span style="color: #3730a3; font-size: 0.75rem; font-weight: 700;">FULL EMPLOYER COST</span>
-                <div style="font-weight: 800; font-size: 1.15rem; color: #4338ca; margin-top: 4px;">₱<%= payroll.totalEmployerCost.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
+            <div style="background: #ecfdf5; padding: 12px; border-radius: 8px; border: 1px solid #a7f3d0;">
+                <span style="color: #065f46; font-size: 0.75rem; font-weight: 700;">FULL EMPLOYER COST</span>
+                <div style="font-weight: 800; font-size: 1.15rem; color: #065f46; margin-top: 4px;">₱<%= payroll.totalEmployerCost.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
             </div>
         </div>
     </div>

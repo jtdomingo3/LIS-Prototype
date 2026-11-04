@@ -1,7 +1,7 @@
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; background: #ffffff;">
   <!-- Module Tabs: PhilHealth vs Health Card -->
   <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
-    <a href="/philhealth" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; color: #059669; border-bottom: 3px solid #10b981; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; background: #ecfdf5; border-radius: 8px 8px 0 0;">
+    <a href="/philhealth" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; color: #0369a1; border-bottom: 3px solid #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; background: #f0f9ff; border-radius: 8px 8px 0 0;">
       <i class="fa fa-file-medical"></i> PhilHealth (Konsulta / DOH)
     </a>
     <a href="/healthcard" style="padding: 10px 22px; font-weight: 600; font-size: 0.95em; color: #64748b; border-bottom: 3px solid transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; border-radius: 8px 8px 0 0; transition: all 0.15s;" onmouseover="this.style.color='#059669'; this.style.background='#f8fafc';" onmouseout="this.style.color='#64748b'; this.style.background='transparent';">
@@ -13,7 +13,7 @@
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
     <div>
       <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-        <div style="width: 36px; height: 36px; border-radius: 10px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 6px rgba(16,185,129,0.15); flex-shrink: 0;">
+        <div style="width: 36px; height: 36px; border-radius: 10px; background: #f0f9ff; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 6px rgba(2,132,199,0.15); flex-shrink: 0;">
           <i class="fas fa-shield-alt"></i>
         </div>
         <h3 style="margin: 0; font-size: 1.45rem; color: #0f172a; font-weight: 800; letter-spacing: -0.02em;">
@@ -31,7 +31,7 @@
       <a href="/reports/worksheet" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
         <i class="fa fa-table"></i> Worksheet
       </a>
-      <a href="/patients/new" class="button btn-primary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+      <a href="/patients/new" class="button btn-blue" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
         <i class="fa fa-user-plus"></i> Enroll PhilHealth Patient
       </a>
     </div>
@@ -62,7 +62,7 @@
     </div>
     <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 14px 18px;">
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #4338ca; letter-spacing: 0.5px;">2nd Tranche Paid</div>
-      <div style="font-size: 1.8em; font-weight: 800; color: #4f46e5; margin-top: 4px;"><%= stats.tranche2Paid %></div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #0284c7; margin-top: 4px;"><%= stats.tranche2Paid %></div>
     </div>
   </div>
 
@@ -123,18 +123,18 @@
   </form>
 
   <!-- Universal Bulk Action Bar for Multi-select -->
-  <div id="bulkActionBar" style="display: none; background: #f8fafc; border: 1.5px solid #6366f1; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 14px rgba(99,102,241,0.12);">
+  <div id="bulkActionBar" style="display: none; background: #f8fafc; border: 1.5px solid #0284c7; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 14px rgba(2,132,199,0.12);">
     <div style="display: flex; align-items: center; gap: 12px;">
       <span style="font-weight: 700; font-size: 0.95em; color: #312e81; display: inline-flex; align-items: center; gap: 6px;">
-        <i class="fa fa-check-double" style="color: #6366f1;"></i> <span id="selectedCount">0</span> record(s) selected
+        <i class="fa fa-check-double" style="color: #0284c7;"></i> <span id="selectedCount">0</span> record(s) selected
       </span>
-      <button type="button" onclick="toggleSelectAll({ checked: true })" style="background: none; border: none; color: #4f46e5; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Select All Visible</button>
+      <button type="button" onclick="toggleSelectAll({ checked: true })" style="background: none; border: none; color: #0284c7; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Select All Visible</button>
       <span style="color: #cbd5e1;">|</span>
       <button type="button" onclick="clearSelection()" style="background: none; border: none; color: #64748b; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Clear</button>
     </div>
     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
       <!-- Universal Batch Modal Trigger -->
-      <button type="button" class="button" onclick="openUniversalBatchModal()" style="height: 36px; padding: 0 16px; font-size: 0.88em; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(79,70,229,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+      <button type="button" class="button" onclick="openUniversalBatchModal()" style="height: 36px; padding: 0 16px; font-size: 0.88em; font-weight: 700; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(2,132,199,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
         <i class="fa fa-layer-group"></i> Universal Batch Update
       </button>
 
@@ -315,7 +315,7 @@
               <!-- 1st Tranche Encoded -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche1Encoded === 'Completed') { %>
-                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending"><i class="fa-solid fa-check" style="margin-right:3px;"></i> Done</span>
                 <% } else { %>
                   <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
                 <% } %>
@@ -324,7 +324,7 @@
               <!-- 2nd Tranche Encoded -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche2Encoded === 'Completed') { %>
-                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending"><i class="fa-solid fa-check" style="margin-right:3px;"></i> Done</span>
                 <% } else { %>
                   <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
                 <% } %>
@@ -333,7 +333,7 @@
               <!-- EKAS -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.ekas === 'Completed') { %>
-                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending"><i class="fa-solid fa-check" style="margin-right:3px;"></i> Done</span>
                 <% } else { %>
                   <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
                 <% } %>
@@ -342,7 +342,7 @@
               <!-- 1st Tranche Paid -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche1Paid === 'Paid') { %>
-                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #15803d; border: 1px solid #86efac;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>">✓ Paid</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #15803d; border: 1px solid #86efac;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>"><i class="fa-solid fa-check" style="margin-right:3px;"></i> Paid</span>
                 <% } else { %>
                   <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;" title="Click to mark as Paid">Not Paid</span>
                 <% } %>
@@ -351,7 +351,7 @@
               <!-- 2nd Tranche Paid -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche2Paid === 'Paid') { %>
-                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>">✓ Paid</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>"><i class="fa-solid fa-check" style="margin-right:3px;"></i> Paid</span>
                 <% } else { %>
                   <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;" title="Click to mark as Paid">Not Paid</span>
                 <% } %>
@@ -702,7 +702,7 @@
       <!-- Modal Footer -->
       <div style="padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
         <button type="button" onclick="closeUniversalBatchModal()" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600;">Cancel</button>
-        <button type="submit" id="btnUniversalSubmit" class="button btn-primary" style="height: 38px; padding: 0 24px; border-radius: 8px; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #6366f1); display: inline-flex; align-items: center; gap: 8px;">
+        <button type="submit" id="btnUniversalSubmit" class="button btn-primary" style="height: 38px; padding: 0 24px; border-radius: 8px; font-weight: 700; background: linear-gradient(135deg, #0284c7, #0369a1); display: inline-flex; align-items: center; gap: 8px;">
           <i class="fa fa-bolt"></i> Apply Batch Updates (<span id="btnApplyCount">0</span> Patients)
         </button>
       </div>
@@ -1078,7 +1078,7 @@
       if (data.success) {
         if (field === 'tranche1Encoded' || field === 'tranche2Encoded' || field === 'ekas') {
           if (nextValue === 'Completed') {
-            el.textContent = '✓ Done';
+            el.innerHTML = '<i class="fa-solid fa-check" style="margin-right:3px;"></i> Done';
             el.style.background = '#dcfce7';
             el.style.color = '#166534';
             el.style.fontWeight = '700';
@@ -1094,10 +1094,10 @@
           }
         } else if (field === 'tranche1Paid' || field === 'tranche2Paid') {
           if (nextValue === 'Paid') {
-            el.textContent = '✓ Paid';
-            el.style.background = (field === 'tranche2Paid') ? '#e0e7ff' : '#dcfce7';
-            el.style.color = (field === 'tranche2Paid') ? '#4338ca' : '#15803d';
-            el.style.borderColor = (field === 'tranche2Paid') ? '#c7d2fe' : '#86efac';
+            el.innerHTML = '<i class="fa-solid fa-check" style="margin-right:3px;"></i> Paid';
+            el.style.background = (field === 'tranche2Paid') ? '#e0f2fe' : '#dcfce7';
+            el.style.color = (field === 'tranche2Paid') ? '#0369a1' : '#15803d';
+            el.style.borderColor = (field === 'tranche2Paid') ? '#bae6fd' : '#86efac';
             el.style.fontWeight = '700';
             el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Not Paid', '" + ctrlNo + "')");
             el.setAttribute('title', 'Click to toggle to Not Paid');
@@ -1117,7 +1117,7 @@
                            field === 'ekas' ? 'EKAS' :
                            field === 'tranche1Paid' ? '1st Tranche Paid' :
                            field === 'tranche2Paid' ? '2nd Tranche Paid' : field;
-        showToast('✓ ' + fieldTitle + ' marked as ' + nextValue + ' (' + ctrlNo + ')');
+        showToast(fieldTitle + ' marked as ' + nextValue + ' (' + ctrlNo + ')');
       } else {
         el.textContent = originalText;
         showUiAlert(data.error || 'Failed to update', 'danger', 'Update Error');

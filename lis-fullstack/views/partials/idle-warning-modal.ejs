@@ -9,7 +9,7 @@
     <!-- Modal Header -->
     <div style="background: #fffbeb; padding: 20px 24px 16px; border-bottom: 1px solid #fef3c7; display: flex; align-items: center; gap: 14px;">
       <div style="width: 48px; height: 48px; border-radius: 50%; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; box-shadow: 0 0 0 6px #fffbeb;">
-        <i class="fa fa-clock-o"></i>
+        <i class="fa-solid fa-clock"></i>
       </div>
       <div>
         <h3 id="idleWarningTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #92400e;">
@@ -29,22 +29,22 @@
 
       <!-- Countdown Display -->
       <div style="display: inline-flex; align-items: baseline; justify-content: center; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 8px 24px; margin-bottom: 20px;">
-        <span id="idleWarningCountdown" style="font-size: 2.8rem; font-weight: 800; font-family: monospace, sans-serif; color: #ea580c; line-height: 1;">60</span>
+        <span id="idleWarningCountdown" style="font-size: 2.8rem; font-weight: 800; font-family: var(--font-mono, monospace); color: var(--accent-orange-dark, #ea580c); line-height: 1;">60</span>
         <span style="font-size: 1.1rem; font-weight: 700; color: #64748b; margin-left: 6px;">seconds</span>
       </div>
 
-      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 24px; font-size: 0.84rem; color: #166534; text-align: left; display: flex; align-items: center; gap: 8px;">
-        <i class="fa fa-info-circle" style="color: #16a34a; font-size: 1rem; flex-shrink: 0;"></i>
+      <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 24px; font-size: 0.84rem; color: #065f46; text-align: left; display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-circle-info" style="color: #059669; font-size: 1rem; flex-shrink: 0;"></i>
         <span>Click <strong>"Keep Working"</strong> to extend your active session and continue entering clinical data.</span>
       </div>
 
       <!-- Action Buttons -->
       <div style="display: flex; gap: 12px; justify-content: flex-end;">
         <button type="button" id="btnIdleLogout" style="background: #f1f5f9; color: #dc2626; border: 1px solid #cbd5e1; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#f1f5f9'">
-          <i class="fa fa-sign-out" style="margin-right: 5px;"></i> Log Out Now
+          <i class="fa-solid fa-right-from-bracket" style="margin-right: 6px;"></i> Log Out Now
         </button>
-        <button type="button" id="btnIdleKeepWorking" style="background: #4f46e5; color: #ffffff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 0.92rem; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); transition: all 0.15s ease;" onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='#4f46e5'">
-          <i class="fa fa-check-circle" style="margin-right: 6px;"></i> I'm Still Here, Keep Working
+        <button type="button" id="btnIdleKeepWorking" style="background: linear-gradient(135deg, var(--primary-brand, #10b981) 0%, var(--primary-brand-dark, #059669) 100%); color: #ffffff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 0.92rem; cursor: pointer; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); transition: all 0.15s ease;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(16, 185, 129, 0.35)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.25)';">
+          <i class="fa-solid fa-circle-check" style="margin-right: 6px;"></i> I'm Still Here, Keep Working
         </button>
       </div>
     </div>

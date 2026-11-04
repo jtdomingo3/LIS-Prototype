@@ -56,12 +56,12 @@
       const themeMap = {
         'Payment Area': { icon: 'fa-cash-register', color: '#059669', bg: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)', border: '#a7f3d0' },
         'Extraction Area': { icon: 'fa-vial', color: '#d97706', bg: 'linear-gradient(135deg, #ffffff 0%, #fffbe6 100%)', border: '#fef08a' },
-        'Drug Test': { icon: 'fa-capsules', color: '#7c3aed', bg: 'linear-gradient(135deg, #ffffff 0%, #faf5ff 100%)', border: '#e9d5ff' },
+        'Drug Test': { icon: 'fa-capsules', color: '#0d9488', bg: 'linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%)', border: '#99f6e4' },
         'Ultrasound': { icon: 'fa-wave-square', color: '#0284c7', bg: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)', border: '#bae6fd' },
         '2D Echo': { icon: 'fa-heart-pulse', color: '#e11d48', bg: 'linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)', border: '#fecdd3' },
         'X-ray': { icon: 'fa-x-ray', color: '#ea580c', bg: 'linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)', border: '#ffedd5' },
         'ECG': { icon: 'fa-file-waveform', color: '#0891b2', bg: 'linear-gradient(135deg, #ffffff 0%, #ecfeff 100%)', border: '#cffaff' },
-        'Releasing of Result': { icon: 'fa-paper-plane', color: '#4f46e5', bg: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)', border: '#ddd6fe' }
+        'Releasing of Result': { icon: 'fa-paper-plane', color: '#0284c7', bg: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)', border: '#bae6fd' }
       };
 
       (areas.slice ? areas.slice(0,10) : areas).forEach(area => { 
@@ -121,7 +121,7 @@
       <form action="/reception/clear-queues" method="POST"
             data-confirm-title="Clear Reception Queue"
             data-confirm-button="Yes, Clear Queues"
-            data-confirm="⚠️ ADMIN CONFIRMATION REQUIRED\n\nAre you sure you want to clear all active reception queues?\n\n• All queue counts (Payment Area, Releasing of Result, Extraction, etc.) will reset to 0.\n• Patient profiles and encoded test results will NOT be lost.\n\nClick Yes to proceed.">
+            data-confirm="ADMIN CONFIRMATION REQUIRED\n\nAre you sure you want to clear all active reception queues?\n\n• All queue counts (Payment Area, Releasing of Result, Extraction, etc.) will reset to 0.\n• Patient profiles and encoded test results will NOT be lost.\n\nClick Yes to proceed.">
         <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <button type="submit" class="button btn-danger no-guard" data-no-guard="1" style="background: #dc2626; color: white; border: none; padding: 10px 20px; font-weight: 700; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25); transition: transform 0.2s;">
           <i class="fas fa-broom"></i>

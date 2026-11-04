@@ -3,13 +3,13 @@
   const themeMap = {
     'Payment Area': { icon: 'fa-cash-register', color: '#059669', bg: '#f0fdf4', border: '#a7f3d0', badgeBg: '#dcfce7', badgeColor: '#15803d', btnBg: '#059669' },
     'Extraction Area': { icon: 'fa-vial', color: '#d97706', bg: '#fffbe6', border: '#fef08a', badgeBg: '#fef3c7', badgeColor: '#b45309', btnBg: '#d97706' },
-    'Drug Test': { icon: 'fa-capsules', color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', badgeBg: '#f3e8ff', badgeColor: '#6b21a8', btnBg: '#7c3aed' },
+    'Drug Test': { icon: 'fa-capsules', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', badgeBg: '#ccfbf1', badgeColor: '#115e59', btnBg: '#0d9488' },
     'Ultrasound': { icon: 'fa-wave-square', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', btnBg: '#0284c7' },
     '2D Echo': { icon: 'fa-heartbeat', color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', badgeBg: '#ffe4e6', badgeColor: '#be123c', btnBg: '#e11d48' },
     'X-ray': { icon: 'fa-x-ray', color: '#ea580c', bg: '#fff7ed', border: '#ffedd5', badgeBg: '#ffedd5', badgeColor: '#c2410c', btnBg: '#ea580c' },
     'ECG': { icon: 'fa-file-medical-alt', color: '#0891b2', bg: '#ecfeff', border: '#cffaff', badgeBg: '#cffafe', badgeColor: '#0e7490', btnBg: '#0891b2' },
     'Sendout': { icon: 'fa-box-archive', color: '#475569', bg: '#f8fafc', border: '#e2e8f0', badgeBg: '#f1f5f9', badgeColor: '#334155', btnBg: '#475569' },
-    'Releasing of Result': { icon: 'fa-paper-plane', color: '#4f46e5', bg: '#f5f3ff', border: '#ddd6fe', badgeBg: '#ede9fe', badgeColor: '#5b21b6', btnBg: '#4f46e5' }
+    'Releasing of Result': { icon: 'fa-paper-plane', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', btnBg: '#0284c7' }
   };
   const isDoctor = String(areaName).toLowerCase().includes('doctor');
   const theme = themeMap[areaName] || (isDoctor ? { icon: 'fa-user-md', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', badgeBg: '#ccfbf1', badgeColor: '#0f766e', btnBg: '#0d9488' } : { icon: 'fa-hospital-user', color: '#10b981', bg: '#f8fafc', border: '#e2e8f0', badgeBg: '#f1f5f9', badgeColor: '#334155', btnBg: '#10b981' });
@@ -128,12 +128,12 @@
                         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px;">
                           <% if (isPhilMember) { %>
                             <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700;" title="PhilHealth: <%= pPhilId || 'Member' %>">
-                              🩺 PhilHealth
+                              <i class="fa-solid fa-shield-halved" style="margin-right:3px;"></i> PhilHealth
                             </span>
                           <% } %>
                           <% if (isHealthCardMember) { %>
                             <span style="background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700;" title="HMO: <%= pHealthCardProvider %>">
-                              💳 <%= pHealthCardProvider || 'HMO' %>
+                              <i class="fa-solid fa-id-card" style="margin-right:3px;"></i> <%= pHealthCardProvider || 'HMO' %>
                             </span>
                           <% } %>
                         </div>
@@ -215,6 +215,7 @@
                 <% if (areaName !== 'Payment Area') { %>
                   <td style="padding: 16px 18px; vertical-align: top;">
                     <form action="/reception/assign" method="POST" class="assign-form" style="margin: 0;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                       <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                       <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
                       
@@ -238,6 +239,7 @@
                     <!-- Payment Area Billing Controls -->
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                       <form action="/reception/complete" method="POST" class="complete-form" data-require-amount="<%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? '1' : '0' %>" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin: 0; width: 100%;">
+                        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                         <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
@@ -262,23 +264,12 @@
                             <i class="fa fa-check-circle"></i> Mark Complete / Paid
                           </button>
 
-                          <button type="button" class="button btn-small btn-philhealth" 
-                            data-patient-name="<%= pName %>"
-                            data-patient-philhealth="<%= isPhilMember ? '1' : '0' %>"
-                            data-philhealth-id="<%= pPhilId %>"
-                            style="background: <%= isPhilMember ? '#0284c7' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isPhilMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
-                            <%= !isPhilMember ? 'disabled' : '' %>
-                            onclick="submitChargedToPhilhealth(this)" 
-                            title="<%= isPhilMember ? 'Charge to PhilHealth (Verified Member)' : 'Disabled: Patient is not registered as a PhilHealth member' %>">
-                            <i class="fa fa-file-medical"></i> Charged to PhilHealth
-                          </button>
-
                           <button type="button" class="button btn-small btn-healthcard" 
                             data-patient-name="<%= pName %>"
                             data-patient-healthcard="<%= isHealthCardMember ? '1' : '0' %>"
                             data-healthcard-provider="<%= pHealthCardProvider %>"
                             data-healthcard-id="<%= pHealthCardId %>"
-                            style="background: <%= isHealthCardMember ? '#6366f1' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isHealthCardMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
+                            style="background: <%= isHealthCardMember ? '#0284c7' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isHealthCardMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
                             <%= !isHealthCardMember ? 'disabled' : '' %>
                             onclick="submitChargedToHealthcard(this)" 
                             title="<%= isHealthCardMember ? ('Charge to Health Card (' + pHealthCardProvider + ')') : 'Disabled: Patient is not registered with a Health Card' %>">
@@ -291,6 +282,7 @@
                         data-confirm="Are you sure you want to remove this patient from Payment Area queue?"
                         data-confirm-title="Remove from Queue"
                         data-confirm-button="Yes, Remove">
+                        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                         <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
@@ -317,6 +309,7 @@
                         </a>
                       <% } %>
                       <form action="/reception/complete" method="POST" class="complete-form" style="margin: 0; width: 100%;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                         <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
@@ -330,6 +323,7 @@
                           data-confirm-title="Stash Patient Result" 
                           data-confirm-button="Yes, Stash Result" 
                           data-confirm="Stash results for this patient?&#10;&#10;• The patient will be moved to the Stashed Results section on Reception.&#10;• This queue count will decrease immediately.">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                           <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                           <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                           <button type="submit" class="button btn-small no-guard" data-no-guard="1" style="width: 100%; height: 32px; background: #f59e0b; color: white; border: none; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Stash result if patient unavailable">
@@ -342,6 +336,7 @@
                         data-confirm="Are you sure you want to remove this patient from <%= areaName %> queue?"
                         data-confirm-title="Remove from Queue"
                         data-confirm-button="Yes, Remove">
+                        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                         <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
@@ -413,83 +408,6 @@
       }
     };
 
-    // Handler for Charged to PhilHealth button
-    window.submitChargedToPhilhealth = function(btn) {
-      try {
-        const form = btn && btn.closest ? btn.closest('form') : null;
-        if (!form) return;
-
-        const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
-        const isMember = btn && btn.dataset && btn.dataset.patientPhilhealth === '1';
-        const philhealthId = (btn && btn.dataset && btn.dataset.philhealthId) ? btn.dataset.philhealthId : '';
-
-        if (!isMember) {
-          if (typeof window.showCustomAlert === 'function') {
-            window.showCustomAlert(
-              '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
-                '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
-                '<p>Patient <strong>' + patientName + '</strong> is not registered as a PhilHealth member in the demographic records.</p>' +
-                '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to enable PhilHealth billing.</p>' +
-              '</div>',
-              { title: 'Non-PhilHealth Member', btnText: 'Understood', type: 'danger' }
-            );
-          } else {
-            alert('Patient ' + patientName + ' is not registered as a PhilHealth member.');
-          }
-          return;
-        }
-
-        const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
-                        '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to PhilHealth?</p>' +
-                        '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-                          '<div><strong>Patient:</strong> ' + patientName + '</div>' +
-                          '<div style="margin-top:4px;"><strong>PhilHealth Status:</strong> ' + 
-                            '<span style="color:#059669; font-weight:700;">✓ Verified Member' + (philhealthId ? ' (ID: ' + philhealthId + ')' : '') + '</span>' +
-                          '</div>' +
-                        '</div>' +
-                        '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
-                          '• <strong>Amount Due:</strong> ₱0.00 (No on-site collection)<br>' +
-                          '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
-                        '</div>' +
-                      '</div>';
-
-        const proceedCharge = function() {
-          let philInput = form.querySelector('input[name="charged_to_philhealth"]');
-          if (!philInput) {
-            philInput = document.createElement('input');
-            philInput.type = 'hidden';
-            philInput.name = 'charged_to_philhealth';
-            form.appendChild(philInput);
-          }
-          philInput.value = '1';
-          let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
-          if (cardInput) cardInput.value = '0';
-          form.dataset.requireAmount = '0';
-
-          if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
-          } else {
-            form.submit();
-          }
-        };
-
-        if (typeof window.showCustomConfirm === 'function') {
-          window.showCustomConfirm(htmlMsg, proceedCharge, {
-            title: 'PhilHealth Billing Verification',
-            btnText: 'Yes, Charge to PhilHealth',
-            type: 'primary',
-            icon: 'fa fa-file-medical',
-            iconBg: '#e0f2fe',
-            iconColor: '#0284c7'
-          });
-        } else {
-          proceedCharge();
-        }
-      } catch (e) {
-        console.error('submitChargedToPhilhealth error', e);
-      }
-    };
-
     // Handler for Charged to Health Card button
     window.submitChargedToHealthcard = function(btn) {
       try {
@@ -522,7 +440,7 @@
                         '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
                           '<div><strong>Patient:</strong> ' + patientName + '</div>' +
                           '<div style="margin-top:4px;"><strong>HMO / Provider:</strong> ' + 
-                            '<span style="color:#4f46e5; font-weight:700;">' + provider + '</span>' +
+                            '<span style="color:#0284c7; font-weight:700;">' + provider + '</span>' +
                           '</div>' +
                           (cardId ? '<div style="margin-top:4px;"><strong>Card / Member #:</strong> <span style="font-weight:600; color:#0f172a;">' + cardId + '</span></div>' : '') +
                         '</div>' +
@@ -558,8 +476,8 @@
             btnText: 'Yes, Charge to Health Card',
             type: 'primary',
             icon: 'fas fa-id-card-clip',
-            iconBg: '#e0e7ff',
-            iconColor: '#4f46e5'
+            iconBg: '#e0f2fe',
+              iconColor: '#0284c7'
           });
         } else {
           proceedCharge();

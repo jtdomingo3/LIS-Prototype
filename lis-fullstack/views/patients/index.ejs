@@ -148,7 +148,7 @@
               </td>
               <td style="padding:14px;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; <%= isFemale ? 'background:#fce7f3; color:#db2777;' : 'background:#e0e7ff; color:#4338ca;' %> font-weight:700; font-size:0.85em; flex-shrink:0;"><%= initials %></span>
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; <%= isFemale ? 'background:#fce7f3; color:#db2777;' : 'background:#e0f2fe; color:#0369a1;' %> font-weight:700; font-size:0.85em; flex-shrink:0;"><%= initials %></span>
                   <div>
                     <strong style="color:#0f172a; display:block; font-size:0.95em;"><%= fullName %></strong>
                     <% if (patient.patientId && patient.patientId !== patientIdDisplay) { %>
@@ -189,7 +189,7 @@
                 <% if (patient.healthInsuranceConsent) { %>
                   <div style="margin-top:4px;">
                     <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:12px; font-size:0.78em; font-weight:700; background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe;" title="<%= patient.healthInsuranceProvider || 'Health Card' %>: <%= patient.healthInsuranceId || 'Member' %>">
-                      <i class="fas fa-id-card" style="color:#8b5cf6;"></i> <%= patient.healthInsuranceProvider || 'Health Card' %>
+                      <i class="fas fa-id-card" style="color:#0284c7;"></i> <%= patient.healthInsuranceProvider || 'Health Card' %>
                     </span>
                   </div>
                 <% } %>
@@ -198,7 +198,7 @@
                 <% if (patient.hasTests) { %>
                   <a href="/patients/<%= patient.id %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600;"><i class="fas fa-eye"></i> View</a>
                 <% } else if (patient.healthInsuranceConsent) { %>
-                  <a href="/healthcard?search=<%= encodeURIComponent(patient.patientCode || patient.lastName) %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600; background:#6366f1; border-color:#4f46e5;" title="Approve LOA and assign authorized procedures in Health Card panel"><i class="fas fa-id-card"></i> Approve LOA</a>
+                  <a href="/healthcard?search=<%= encodeURIComponent(patient.patientCode || patient.lastName) %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600; background:#0284c7; border-color:#0369a1;" title="Approve LOA and assign authorized procedures in Health Card panel"><i class="fas fa-id-card"></i> Approve LOA</a>
                 <% } else if (patient.philhealthConsent) { %>
                   <a href="/philhealth?search=<%= encodeURIComponent(patient.patientCode || patient.lastName) %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600; background:#059669;" title="Assign PhilHealth procedures in PhilHealth panel"><i class="fas fa-shield-alt"></i> PhilHealth</a>
                 <% } else { %>

@@ -18,7 +18,7 @@
                     <%= employee.name %>
                     <% if (employee.isSystemAccount) { %>
                         <span style="font-size: 0.78rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
-                            ⚙️ SYSTEM ACCOUNT
+                            <i class="fa fa-gear" style="margin-right:6px;"></i> SYSTEM ACCOUNT
                         </span>
                     <% } %>
                     <% 
@@ -30,7 +30,7 @@
                         } else if (employee.employmentStatus === 'Terminated') {
                             profileStatusBg = '#fee2e2'; profileStatusColor = '#991b1b';
                         } else if (employee.employmentStatus === 'On Leave') {
-                            profileStatusBg = '#ede9fe'; profileStatusColor = '#6d28d9';
+                            profileStatusBg = '#f0fdf4'; profileStatusColor = '#065f46';
                         }
                         const safeEmpName = (employee.name || '').replace(/'/g, "\\'");
                         const safeEmpReason = (employee.resignationReason || '').replace(/'/g, "\\'");
@@ -41,7 +41,7 @@
                         style="border: none; background: transparent; cursor: pointer; padding: 0;"
                         title="Click to update employment status or set end date">
                         <span style="font-size: 0.78rem; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: <%= profileStatusBg %>; color: <%= profileStatusColor %>; display: inline-flex; align-items: center; gap: 4px;">
-                            <span><%= employee.employmentStatus === 'AWOL' ? '⚠️' : (employee.employmentStatus === 'Resigned' ? '⏹' : '●') %></span>
+                            <span><%= employee.employmentStatus === 'AWOL' ? '' : (employee.employmentStatus === 'Resigned' ? '⏹' : '●') %></span>
                             <%= employee.employmentStatus %>
                         </span>
                     </button>
@@ -57,27 +57,27 @@
                 onclick="openStatusModal('<%= employee.id %>', '<%= safeEmpName %>', '<%= employee.employeeCode %>', '<%= employee.employmentStatus %>', '<%= empSepDate %>', '<%= safeEmpReason %>')"
                 class="btn btn-small" 
                 style="padding: 8px 14px; background: #f8fafc; color: #1e293b; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                🔄 Change Status
+                <i class="fa fa-arrows-rotate" style="margin-right:6px;"></i> Change Status
             </button>
             <form action="/hr/employees/<%= employee.id %>/toggle-system-account" method="POST" style="display: inline;" onsubmit="return confirm('<%= employee.isSystemAccount ? 'Restore this account to the regular staff directory?' : 'Tag as System Account? This account will be removed from the active employee directory and payroll.' %>');">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                 <button type="submit" class="btn btn-small" style="padding: 8px 14px; background: <%= employee.isSystemAccount ? '#eff6ff' : '#f8fafc' %>; color: <%= employee.isSystemAccount ? '#1d4ed8' : '#64748b' %>; border: 1px solid <%= employee.isSystemAccount ? '#bfdbfe' : '#cbd5e1' %>; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    <%= employee.isSystemAccount ? '↩️ Restore Staff Account' : '⚙️ Tag as System Account' %>
+                    <%= employee.isSystemAccount ? '<i class="fa fa-arrow-rotate-left" style="margin-right:6px;"></i> Restore Staff Account' : '<i class="fa fa-gear" style="margin-right:6px;"></i> Tag as System Account' %>
                 </button>
             </form>
             <a href="/hr/employees/<%= employee.id %>/edit" class="btn btn-secondary btn-small" style="padding: 8px 14px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                ✏️ Edit Profile
+                <i class="fa fa-pencil" style="margin-right:6px;"></i> Edit Profile
             </a>
             <% if (!employee.isSystemAccount) { %>
-                <a href="/hr/print/coe/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #e0e7ff; color: #4338ca; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                    📄 Print COE
+                <a href="/hr/print/coe/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #ecfdf5; color: #065f46; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    <i class="fa fa-file-lines" style="margin-right:6px;"></i> Print COE
                 </a>
                 <a href="/hr/print/clearance/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #fef3c7; color: #92400e; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                    📋 Clearance Form
+                    <i class="fa fa-clipboard-list" style="margin-right:6px;"></i> Clearance Form
                 </a>
             <% } %>
             <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #f1f5f9; color: #475569; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                📑 BIR 2316 Reference
+                <i class="fa fa-file-invoice" style="margin-right:6px;"></i> BIR 2316 Reference
             </a>
         </div>
     </div>
@@ -87,7 +87,7 @@
         <div style="background: <%= employee.employmentStatus === 'AWOL' ? '#fff1f2' : '#fffbeb' %>; border: 1.5px solid <%= employee.employmentStatus === 'AWOL' ? '#fecdd3' : '#fde68a' %>; border-left: 5px solid <%= employee.employmentStatus === 'AWOL' ? '#e11d48' : '#d97706' %>; border-radius: 10px; padding: 14px 18px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>
                 <div style="font-weight: 800; font-size: 0.95rem; color: <%= employee.employmentStatus === 'AWOL' ? '#9f1239' : '#92400e' %>; display: flex; align-items: center; gap: 6px;">
-                    <span><%= employee.employmentStatus === 'AWOL' ? '⚠️' : '⏹' %></span> 
+                    <span><%= employee.employmentStatus === 'AWOL' ? '' : '⏹' %></span> 
                     Employment Separation Status: <%= employee.employmentStatus.toUpperCase() %>
                 </div>
                 <div style="font-size: 0.85rem; color: #475569; margin-top: 4px;">
@@ -139,7 +139,7 @@
 
     <!-- Tabs Navigation -->
     <div role="tablist" style="display: flex; gap: 6px; border-bottom: 2px solid #e2e8f0; margin-bottom: 22px;">
-        <button type="button" role="tab" data-no-guard="1" onclick="switchTab('personal')" id="tab-btn-personal" class="profile-tab active" style="padding: 10px 18px; border: none; background: transparent; font-weight: 700; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid #4f46e5; color: #4f46e5;">Personal & Employment</button>
+        <button type="button" role="tab" data-no-guard="1" onclick="switchTab('personal')" id="tab-btn-personal" class="profile-tab active" style="padding: 10px 18px; border: none; background: transparent; font-weight: 700; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid #059669; color: #059669;">Personal & Employment</button>
         <button type="button" role="tab" data-no-guard="1" onclick="switchTab('compensation')" id="tab-btn-compensation" class="profile-tab" style="padding: 10px 18px; border: none; background: transparent; font-weight: 600; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid transparent; color: #64748b;">Compensation & Government</button>
         <button type="button" role="tab" data-no-guard="1" onclick="switchTab('payrolls')" id="tab-btn-payrolls" class="profile-tab" style="padding: 10px 18px; border: none; background: transparent; font-weight: 600; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid transparent; color: #64748b;">Payroll History (<%= payrolls.length %>)</button>
         <button type="button" role="tab" data-no-guard="1" onclick="switchTab('documents')" id="tab-btn-documents" class="profile-tab" style="padding: 10px 18px; border: none; background: transparent; font-weight: 600; font-size: 0.9rem; cursor: pointer; border-bottom: 3px solid transparent; color: #64748b;">Documents & Tax Forms (<%= documents.length %>)</button>
@@ -229,7 +229,7 @@
                                 <% if (employee.payType === 'Commission Only' || employee.isPayrollExempt) { %>
                                     <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">Commission Only (Payroll Exempt)</span>
                                 <% } else if (employee.payType === 'Fixed Monthly') { %>
-                                    <span style="background: #ede9fe; color: #6d28d9; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">Fixed Monthly Retainer</span>
+                                    <span style="background: #f0fdf4; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">Fixed Monthly Retainer</span>
                                 <% } else { %>
                                     <span style="background: #ecfdf5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">Daily Duty (Max 5 days/wk)</span>
                                 <% } %>
@@ -304,8 +304,8 @@
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">BIR TIN #</span>
                             <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
-                                <button type="button" onclick="openQuickTinPrompt()" style="background: none; border: none; color: #4f46e5; font-size: 0.74rem; font-weight: 700; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 2px;">
-                                    ✏️ Edit
+                                <button type="button" onclick="openQuickTinPrompt()" style="background: none; border: none; color: #059669; font-size: 0.74rem; font-weight: 700; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 2px;">
+                                    <i class="fa fa-pencil"></i> Edit
                                 </button>
                             <% } %>
                         </div>
@@ -327,19 +327,19 @@
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 6px 0;">SSS + EC</td>
                             <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= stat.sss ? stat.sss.fullMonthlyEE : 0 %></td>
-                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= stat.sss ? stat.sss.fullMonthlyER : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #065f46;">₱<%= stat.sss ? stat.sss.fullMonthlyER : 0 %></td>
                             <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= stat.sss ? (stat.sss.fullMonthlyEE + stat.sss.fullMonthlyER).toFixed(2) : '0.00' %></td>
                         </tr>
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 6px 0;">PhilHealth</td>
                             <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= stat.philhealth ? stat.philhealth.fullMonthlyEE : 0 %></td>
-                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= stat.philhealth ? stat.philhealth.fullMonthlyER : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #065f46;">₱<%= stat.philhealth ? stat.philhealth.fullMonthlyER : 0 %></td>
                             <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= stat.philhealth ? (stat.philhealth.fullMonthlyEE + stat.philhealth.fullMonthlyER).toFixed(2) : '0.00' %></td>
                         </tr>
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 6px 0;">Pag-IBIG</td>
                             <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= stat.pagibig ? stat.pagibig.fullMonthlyEE : 0 %></td>
-                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= stat.pagibig ? stat.pagibig.fullMonthlyER : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #065f46;">₱<%= stat.pagibig ? stat.pagibig.fullMonthlyER : 0 %></td>
                             <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= stat.pagibig ? (stat.pagibig.fullMonthlyEE + stat.pagibig.fullMonthlyER).toFixed(2) : '0.00' %></td>
                         </tr>
                     </tbody>
@@ -382,8 +382,8 @@
                                     </span>
                                 </td>
                                 <td style="padding: 12px 18px; text-align: center; white-space: nowrap;">
-                                    <a href="/hr/payroll/<%= p.id %>" style="color: #4f46e5; text-decoration: none; font-weight: 600; font-size: 0.82rem; margin-right: 6px;">Details</a>
-                                    <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="color: #059669; text-decoration: none; font-weight: 600; font-size: 0.82rem;">Print 🖨️</a>
+                                    <a href="/hr/payroll/<%= p.id %>" style="color: #059669; text-decoration: none; font-weight: 600; font-size: 0.82rem; margin-right: 6px;">Details</a>
+                                    <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="color: #059669; text-decoration: none; font-weight: 600; font-size: 0.82rem;">Print <i class="fa fa-print"></i></a>
                                 </td>
                             </tr>
                         <% }) %>
@@ -397,7 +397,7 @@
     <div id="tab-documents" class="tab-pane" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="margin: 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700;">Uploaded Documents & Compliance</h3>
-            <button onclick="document.getElementById('uploadDocModal').style.display='flex'" class="btn btn-primary btn-small" style="padding: 6px 14px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+            <button onclick="document.getElementById('uploadDocModal').style.display='flex'" class="btn btn-primary btn-small" style="padding: 6px 14px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                 + Upload Document
             </button>
         </div>
@@ -422,7 +422,7 @@
                         <% documents.forEach(d => { %>
                             <tr style="border-bottom: 1px solid #f1f5f9;">
                                 <td style="padding: 10px 18px;">
-                                    <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; background: #e0e7ff; color: #3730a3;">
+                                    <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; background: #ecfdf5; color: #065f46;">
                                         <%= d.documentType %>
                                     </span>
                                 </td>
@@ -431,7 +431,7 @@
                                 <td style="padding: 10px 18px; color: #64748b;"><%= d.createdAt ? d.createdAt.slice(0, 10) : '' %></td>
                                 <td style="padding: 10px 18px; text-align: center;">
                                     <% if (d.filePath) { %>
-                                        <a href="<%= d.filePath %>" target="_blank" style="color: #4f46e5; text-decoration: none; font-weight: 600;">View ↗</a>
+                                        <a href="<%= d.filePath %>" target="_blank" style="color: #059669; text-decoration: none; font-weight: 600;">View ↗</a>
                                     <% } else { %>—<% } %>
                                 </td>
                             </tr>
@@ -488,7 +488,7 @@
     <div style="background: white; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); overflow: hidden;">
         <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e1b4b;">Upload HR Document</h3>
-            <button onclick="document.getElementById('uploadDocModal').style.display='none'" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #94a3b8;">✕</button>
+            <button onclick="document.getElementById('uploadDocModal').style.display='none'" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #94a3b8;">&times;</button>
         </div>
         <form action="/hr/documents/upload" method="POST" enctype="multipart/form-data" style="padding: 24px;">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
@@ -523,7 +523,7 @@
 
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" onclick="document.getElementById('uploadDocModal').style.display='none'" style="padding: 10px 18px; border: 1px solid #cbd5e1; background: #fff; color: #475569; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
-                <button type="submit" style="padding: 10px 22px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Upload</button>
+                <button type="submit" style="padding: 10px 22px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Upload</button>
             </div>
         </form>
     </div>
@@ -542,8 +542,8 @@
         const activeBtn = document.getElementById('tab-btn-' + name);
         if (activePane) activePane.style.display = 'block';
         if (activeBtn) {
-            activeBtn.style.borderBottomColor = '#4f46e5';
-            activeBtn.style.color = '#4f46e5';
+            activeBtn.style.borderBottomColor = '#059669';
+            activeBtn.style.color = '#059669';
             activeBtn.style.fontWeight = '700';
         }
     }
@@ -565,7 +565,7 @@
             const data = await res.json();
             if (data.success) {
                 document.getElementById('displayEmpTin').textContent = data.tinNumber || 'Not configured';
-                alert('✓ BIR TIN updated successfully!');
+                alert('BIR TIN updated successfully!');
             } else {
                 alert(data.error || 'Failed to update TIN');
             }
@@ -624,7 +624,7 @@
                 <h3 id="statusModalEmpName" style="margin: 0; font-size: 1.1rem; font-weight: 700;">Update Employment Status</h3>
                 <div id="statusModalEmpCode" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">EMP-CODE</div>
             </div>
-            <button type="button" onclick="closeStatusModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer; line-height: 1;">✕</button>
+            <button type="button" onclick="closeStatusModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer; line-height: 1;">&times;</button>
         </div>
 
         <!-- Form -->
@@ -636,15 +636,15 @@
                     <select name="employmentStatus" id="statusModalSelect" onchange="handleStatusModalChange(this.value)" style="width: 100%; height: 42px; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer;">
                         <option value="Active">● Active (Regular Duty / Active Roster)</option>
                         <option value="Resigned">⏹ Resigned</option>
-                        <option value="AWOL">⚠️ AWOL (Absence Without Official Leave)</option>
-                        <option value="Terminated">✖ Terminated</option>
-                        <option value="On Leave">🏖️ On Leave</option>
+                        <option value="AWOL"> AWOL (Absence Without Official Leave)</option>
+                        <option value="Terminated">Terminated</option>
+                        <option value="On Leave"><i class="fa fa-umbrella-beach"></i> On Leave</option>
                     </select>
                 </div>
 
                 <div id="statusModalDateRow">
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
-                        📅 End Date / Separation Date
+                        End Date / Separation Date
                     </label>
                     <input type="date" name="dateResigned" id="statusModalDate" style="width: 100%; height: 40px; border: 1.5px solid #f87171; border-radius: 8px; padding: 6px 12px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
                     <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">
@@ -654,7 +654,7 @@
 
                 <div id="statusModalReasonRow">
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">
-                        📝 Separation Remarks / Reason
+                        Separation Remarks / Reason
                     </label>
                     <input type="text" name="resignationReason" id="statusModalReason" placeholder="e.g. Voluntary resignation, Failure to report to duty, Personal reasons" style="width: 100%; height: 40px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 0.9rem; box-sizing: border-box;">
                 </div>

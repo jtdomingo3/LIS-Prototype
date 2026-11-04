@@ -5,7 +5,7 @@
             <a href="/hr/my" style="color: #64748b; text-decoration: none; font-size: 1.3rem;">←</a>
             <div>
                 <h2 style="margin: 0; font-size: 1.6rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                    <span>💵</span> My Payslips & Earnings History
+                    <i class="fa fa-money-bill-wave"></i> My Payslips & Earnings History
                 </h2>
                 <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
                     <%= employee.name %> (<%= employee.employeeCode %>) • <%= employee.position %>
@@ -13,8 +13,8 @@
             </div>
         </div>
         <div style="display: flex; gap: 10px;">
-            <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" target="_blank" style="padding: 8px 16px; background: #e0e7ff; color: #4338ca; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>📑</span> <%= new Date().getFullYear() %> Tax Summary (2316)
+            <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" target="_blank" style="padding: 8px 16px; background: #ecfdf5; color: #065f46; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa fa-file-invoice"></i> <%= new Date().getFullYear() %> Tax Summary (2316)
             </a>
             <a href="/hr/my" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 Back to Portal
@@ -38,30 +38,30 @@
         }
     %>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #e0e7ff; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #ecfdf5; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
             <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Historical Gross</div>
             <div style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-top: 4px;">
                 ₱<%= ytdGross.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.78rem; color: #94a3b8;"><%= payslips ? payslips.length : 0 %> payroll cycles recorded</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #e0e7ff; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #ecfdf5; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
             <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Statutory & Deductions</div>
             <div style="font-size: 1.5rem; font-weight: 800; color: #ef4444; margin-top: 4px;">
                 -₱<%= ytdDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.78rem; color: #94a3b8;">SSS, PHIC, HDMF, Tax & Loans</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #e0e7ff; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #ecfdf5; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
             <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Take-Home Pay</div>
             <div style="font-size: 1.5rem; font-weight: 800; color: #059669; margin-top: 4px;">
                 ₱<%= ytdNet.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.78rem; color: #94a3b8;">Disbursed net compensation</div>
         </div>
-        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #e0e7ff; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+        <div style="background: white; border-radius: 12px; padding: 18px; border: 1px solid #ecfdf5; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
             <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Tax Withheld (BIR)</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: #4338ca; margin-top: 4px;">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #065f46; margin-top: 4px;">
                 ₱<%= ytdTax.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.78rem; color: #94a3b8;">TRAIN Law withholding tax</div>
@@ -81,7 +81,7 @@
 
         <% if (!payslips || payslips.length === 0) { %>
             <div style="padding: 60px 20px; text-align: center; color: #94a3b8;">
-                <div style="font-size: 3rem; margin-bottom: 12px;">📑</div>
+                <div style="font-size: 3rem; margin-bottom: 12px;"><i class="fa fa-file-invoice"></i></div>
                 <div style="font-size: 1.1rem; font-weight: 600; color: #475569;">No Payslips Recorded</div>
                 <p style="font-size: 0.85rem; margin-top: 4px;">When HR runs and approves your payroll cycles, your official payslips will be archived here.</p>
             </div>
@@ -132,14 +132,14 @@
                                 </td>
                                 <td style="padding: 14px 16px; text-align: center;">
                                     <% if (p.status === 'Approved' || p.status === 'Paid') { %>
-                                        <span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;">✓ <%= p.status %></span>
+                                        <span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;"><%= p.status %></span>
                                     <% } else { %>
                                         <span style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;"><%= p.status %></span>
                                     <% } %>
                                 </td>
                                 <td style="padding: 14px 16px; text-align: center;">
-                                    <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="padding: 6px 14px; background: #4f46e5; color: white; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                                        <span>🖨️</span> Print
+                                    <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="padding: 6px 14px; background: #059669; color: white; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fa fa-print"></i> Print
                                     </a>
                                 </td>
                             </tr>

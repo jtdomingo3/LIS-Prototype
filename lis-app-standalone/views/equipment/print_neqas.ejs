@@ -282,12 +282,12 @@
         <strong>Gezyne LIS Quality Assessment</strong> &bull; NEQAS Evaluation (<%= record.analyteName %> - <%= record.sampleId %>)
       </div>
       <button type="button" onclick="toggleSigEditor()" style="background: #334155; color: #f8fafc; border: 1px solid #64748b; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
-        ✍️ Signatories (<span id="sigCountBadge"><%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? '4 Signatories' : '3 Signatories' %></span>)
+        <i class="fa fa-pen-nib" style="margin-right:6px;"></i> Signatories (<span id="sigCountBadge"><%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? '4 Signatories' : '3 Signatories' %></span>)
       </button>
     </div>
     <div style="display: flex; gap: 8px;">
       <button class="btn-back" onclick="window.close(); history.back();">&larr; Back to Equipment</button>
-      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> 🖨️ Print / Save as PDF</button>
+      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> Print / Save as PDF</button>
     </div>
   </div>
 
@@ -440,11 +440,11 @@
         <span>
           Overall Grade:
           <% if (grade === 'ACCEPTABLE') { %>
-            <span class="badge-rating rating-acceptable">✓ ACCEPTABLE (|SDI| &le; 2.0)</span>
+            <span class="badge-rating rating-acceptable">ACCEPTABLE (|SDI| &le; 2.0)</span>
           <% } else if (grade === 'QUESTIONABLE') { %>
-            <span class="badge-rating rating-questionable">⚠️ QUESTIONABLE (2.0 &lt; |SDI| &lt; 3.0)</span>
+            <span class="badge-rating rating-questionable">QUESTIONABLE (2.0 &lt; |SDI| &lt; 3.0)</span>
           <% } else if (grade === 'UNSATISFACTORY') { %>
-            <span class="badge-rating rating-unsatisfactory">❌ UNSATISFACTORY (|SDI| &ge; 3.0)</span>
+            <span class="badge-rating rating-unsatisfactory">UNSATISFACTORY (|SDI| &ge; 3.0)</span>
           <% } else { %>
             <span class="badge-rating rating-pending">⏳ PENDING NRL EVALUATION</span>
           <% } %>
@@ -497,7 +497,7 @@
       <% const ca = record.correctiveAction || {}; %>
       <% if (grade === 'UNSATISFACTORY' || grade === 'QUESTIONABLE' || ca.required) { %>
         <div style="color: #b91c1c; font-weight: bold; margin-bottom: 4px;">
-          ⚠️ REGULATORY NOTICE: DOH Administrative Order No. 2021-0037 mandates a documented root-cause analysis and corrective action for proficiency test results exceeding |SDI| > 2.0.
+          REGULATORY NOTICE: DOH Administrative Order No. 2021-0037 mandates a documented root-cause analysis and corrective action for proficiency test results exceeding |SDI| > 2.0.
         </div>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
@@ -515,7 +515,7 @@
         </table>
       <% } else { %>
         <div style="color: #166534; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-          <span>✓</span>
+          <span>&#10003;</span>
           <span>Laboratory analytical performance verified within acceptable DOH & NRL tolerance limits. No corrective action required.</span>
         </div>
         <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">
@@ -613,7 +613,7 @@
 
       const toast = document.getElementById('drawerToast');
       if (toast) {
-        toast.textContent = '✓ Signatories updated!';
+        toast.textContent = 'Signatories updated!';
         toast.style.display = 'inline-block';
         setTimeout(() => { toast.style.display = 'none'; }, 3000);
       }

@@ -2,12 +2,12 @@
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
     <div>
       <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
-        <span style="font-size:1.1em;">📋</span> Diagnostic Clinical Reports Hub
+        <i class="fa fa-file-medical" style="color:#059669; margin-right:8px;"></i> Diagnostic Clinical Reports Hub
       </h3>
       <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Select a validated laboratory test to generate, preview, download, or print official diagnostic reports.</p>
     </div>
     <div>
-      <a href="/reports/worksheet" class="button btn-secondary" style="padding:8px 16px; font-size:0.88em;">📊 Batch Worksheets</a>
+      <a href="/reports/worksheet" class="button btn-secondary" style="padding:8px 16px; font-size:0.88em;"><i class="fa fa-table-list" style="margin-right:6px;"></i> Batch Worksheets</a>
     </div>
   </div>
 
@@ -28,15 +28,15 @@
 
   <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:24px;">
     <button type="button" class="button btn-primary" onclick="(function(){var sel=document.getElementById('reportSelect'); if(sel && sel.value) window.location.href='/reports/pdf/'+sel.value; else alert('Please select a test result first');})();" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; font-weight:600;">
-      📥 Download PDF
+      <i class="fa fa-file-pdf" style="margin-right:6px;"></i> Download PDF
     </button>
     <button type="button" class="button btn-orange" onclick="(function(){var sel=document.getElementById('reportSelect'); if(sel && sel.value) window.open('/reports/print/'+sel.value, '_blank'); else alert('Please select a test result first');})();" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; font-weight:600;">
-      🖨️ Print Report
+      <i class="fa fa-print" style="margin-right:6px;"></i> Print Report
     </button>
   </div>
 
   <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:32px 20px; text-align:center; color:#64748b;">
-    <span style="font-size:2em; display:block; margin-bottom:8px;">📄</span>
+    <div style="font-size:2.2rem; color:#94a3b8; margin-bottom:8px;"><i class="fa fa-file-lines"></i></div>
     <strong style="color:#334155; font-size:1em; display:block;">Select a Patient Record from Dropdown Above</strong>
     <span style="font-size:0.85em;">Direct report preview and signatory controls will open automatically.</span>
   </div>

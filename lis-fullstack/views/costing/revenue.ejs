@@ -15,7 +15,7 @@
                 <input type="month" id="monthPicker" name="month" value="<%= selectedMonth %>" onchange="this.form.submit()" style="padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: #0f172a; background: #fff;">
             </form>
             <a href="/costing/export/excel?month=<%= selectedMonth %>&type=pnl" class="btn btn-primary btn-small" style="padding: 8px 14px; background: #10b981; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                <span>📥</span> Export
+                <i class="fa fa-download" style="margin-right:4px;"></i> Export
             </a>
         </div>
     </div>
@@ -44,7 +44,7 @@
     <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04); overflow: hidden;">
         <% if (entries.length === 0) { %>
             <div style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                <div style="font-size: 2.5rem; margin-bottom: 10px;">🧾</div>
+                <div style="font-size: 2.5rem; margin-bottom: 10px; color:#94a3b8;"><i class="fa fa-receipt"></i></div>
                 <div style="font-weight: 600; font-size: 1rem; color: #475569;">No revenue records found for <%= selectedMonth %></div>
                 <p style="font-size: 0.85rem; margin: 4px 0 16px 0;">Transactions recorded at reception Payment Area will automatically appear here.</p>
             </div>
@@ -70,7 +70,7 @@
                                     <span style="font-size: 0.78rem; color: #94a3b8;"><%= r.revenueDate ? new Date(r.revenueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '' %></span>
                                 </td>
                                 <td style="padding: 12px 18px;">
-                                    <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; background: <%= r.paymentMethod.includes('PhilHealth') ? '#dcfce7; color: #166534;' : (r.paymentMethod.includes('Health') ? '#e0e7ff; color: #3730a3;' : '#f1f5f9; color: #334155;') %>">
+                                    <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; background: <%= r.paymentMethod.includes('PhilHealth') ? '#dcfce7; color: #166534;' : (r.paymentMethod.includes('Health') ? '#e0f2fe; color: #0369a1;' : '#f1f5f9; color: #334155;') %>">
                                         <%= r.paymentMethod %>
                                     </span>
                                 </td>

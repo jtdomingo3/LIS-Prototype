@@ -235,10 +235,10 @@
                 </select>
             </div>
             <span style="font-size: 0.76rem; color: #166534; background: #dcfce7; padding: 5px 10px; border-radius: 6px; font-weight: 600;">
-                ✓ Official BIR 2316 • Fits 1 Page
+                Official BIR 2316 • Fits 1 Page
             </span>
             <button onclick="window.print()" style="padding: 7px 18px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; box-shadow: 0 2px 5px rgba(0,153,87,0.3);">
-                <span>🖨️</span> Print Official BIR 2316
+                <i class="fa fa-print"></i> Print Official BIR 2316
             </button>
         </div>
     </div>
@@ -975,7 +975,7 @@
     <!-- ═══ Monthly Breakdown (Screen-Only reference for HR) ═══ -->
     <div class="no-print" style="margin-top:20px; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; background:white;">
         <div style="background:#f8fafc; padding:10px 16px; font-weight:700; font-size:0.85rem; color:#334155; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
-            <span>📊 Supporting Monthly Payroll Breakdown (<%= yearPayrolls.length %> Cycles in <%= year %>)</span>
+            <span><i class="fa fa-chart-column"></i> Supporting Monthly Payroll Breakdown (<%= yearPayrolls.length %> Cycles in <%= year %>)</span>
             <small style="color:#64748b; font-weight:normal;">(Reference Only — Not Printed on Official BIR 2316)</small>
         </div>
         <% if (yearPayrolls.length === 0) { %>
@@ -1004,7 +1004,7 @@
                                 <td style="padding:8px 12px; text-align:right; color:#64748b;">₱<%= (Number(p.sssContribution) || 0).toFixed(2) %></td>
                                 <td style="padding:8px 12px; text-align:right; color:#64748b;">₱<%= (Number(p.philhealthContribution) || 0).toFixed(2) %></td>
                                 <td style="padding:8px 12px; text-align:right; color:#64748b;">₱<%= (Number(p.pagibigContribution) || 0).toFixed(2) %></td>
-                                <td style="padding:8px 12px; text-align:right; font-weight:700; color:#4338ca;">₱<%= (Number(p.withholdingTax) || 0).toFixed(2) %></td>
+                                <td style="padding:8px 12px; text-align:right; font-weight:700; color:#065f46;">₱<%= (Number(p.withholdingTax) || 0).toFixed(2) %></td>
                                 <td style="padding:8px 12px; text-align:right; font-weight:700; color:#059669;">₱<%= (Number(p.netPay) || 0).toFixed(2) %></td>
                             </tr>
                         <% }); %>

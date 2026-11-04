@@ -570,10 +570,10 @@
         <div class="intel-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h4 style="margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-gauge-high" style="color: #6366f1;"></i>
+                    <i class="fas fa-gauge-high" style="color: #0284c7;"></i>
                     <span>Operational Efficiency & Turnaround</span>
                 </h4>
-                <span style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 2px 10px; border-radius: 12px; font-size: 0.76rem; font-weight: 700;">
+                <span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 10px; border-radius: 12px; font-size: 0.76rem; font-weight: 700;">
                     Target: &lt; 2h
                 </span>
             </div>
@@ -689,7 +689,7 @@
         <div class="chart-panel">
             <div class="chart-header">
                 <h3>
-                    <i class="fa fa-user-doctor" style="color: #8b5cf6;"></i>
+                    <i class="fa fa-user-doctor" style="color: #0284c7;"></i>
                     <span>Top Referring Physicians</span>
                 </h3>
                 <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Clinic Partnerships</span>
@@ -707,7 +707,7 @@
                                 <div class="leader-rank <%= rankClass %>">#<%= idx + 1 %></div>
                                 <strong style="font-size: 0.88rem; color: #1e293b;"><%= doc.name %></strong>
                             </div>
-                            <span style="font-size: 0.82rem; font-weight: 700; color: #6366f1; background: #e0e7ff; padding: 2px 10px; border-radius: 10px;">
+                            <span style="font-size: 0.82rem; font-weight: 700; color: #0369a1; background: #e0f2fe; padding: 2px 10px; border-radius: 10px;">
                                 <%= doc.count %> tests
                             </span>
                         </div>
@@ -743,7 +743,7 @@
         <div class="chart-panel">
             <div class="chart-header">
                 <h3>
-                    <i class="fa fa-users" style="color: #6366f1;"></i>
+                    <i class="fa fa-users" style="color: #059669;"></i>
                     <span>Frequent Patient Ages</span>
                 </h3>
             </div>
@@ -1047,7 +1047,7 @@
                 const selected = entries.map(e => Number(selectedMap[e[0]] || 0));
                 const today = entries.map(e => Number(todayMap[e[0]] || 0));
 
-                const palette = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6'];
+                const palette = ['#10b981', '#3b82f6', '#f59e0b', '#0284c7', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#0d9488', '#14b8a6'];
                 const colors = labels.map((_, i) => palette[i % palette.length]);
 
                 let currentTestMode = 'TOTAL';
@@ -1115,7 +1115,7 @@
                         datasets: [{
                             label: 'Referred Tests',
                             data: physicians.map(p => p.count),
-                            backgroundColor: '#8b5cf6',
+                            backgroundColor: '#0284c7',
                             borderRadius: 6,
                             maxBarThickness: 24
                         }]
@@ -1178,7 +1178,7 @@
                         datasets: [{
                             label: 'Patients',
                             data: topAges.length > 0 ? topAges.map(a => a.count) : [0],
-                            backgroundColor: '#6366f1',
+                            backgroundColor: '#0d9488',
                             borderRadius: 6,
                             maxBarThickness: 28
                         }]

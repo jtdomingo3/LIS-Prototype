@@ -16,6 +16,7 @@
     </div>
 
     <form action="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <!-- Card 1: Account Linking & Basic Details -->
         <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
             <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
@@ -43,7 +44,7 @@
                         <input type="checkbox" name="isSystemAccount" value="1" <%= (employee && employee.isSystemAccount) ? 'checked' : '' %> style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;">
                         <div>
                             <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">
-                                ⚙️ Tag as System / Service Account
+                                <i class="fa fa-gear" style="margin-right:6px;"></i> Tag as System / Service Account
                             </div>
                             <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
                                 Designates this as an operational or generic system account (e.g., IT User, Reception, Gezyne Clinical Lab). 
@@ -108,14 +109,14 @@
                 <!-- Separation / End Date & Remarks (Visible when Resigned, AWOL, or Terminated) -->
                 <div id="separationDateContainer" style="display: <%= (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') ? 'block' : 'none' %>;">
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
-                        📅 End Date / Separation Date
+                        End Date / Separation Date
                     </label>
                     <input type="date" name="dateResigned" id="dateResignedInput" value="<%= employee.dateResigned || employee.dateTerminated || employee.endDate || '' %>" style="width: 100%; padding: 10px; border: 1.5px solid #f87171; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
                 </div>
 
                 <div id="separationReasonContainer" style="grid-column: 1 / -1; display: <%= (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') ? 'block' : 'none' %>;">
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
-                        📝 Separation Remarks / Reason
+                        Separation Remarks / Reason
                     </label>
                     <input type="text" name="resignationReason" id="resignationReasonInput" value="<%= employee.resignationReason || '' %>" placeholder="e.g. Voluntary resignation, AWOL effective mm/dd, Career transition" style="width: 100%; padding: 10px; border: 1.5px solid #f87171; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
                 </div>
@@ -273,7 +274,7 @@
         <!-- Submit Button -->
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
             <a href="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
-            <button type="submit" style="padding: 12px 32px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+            <button type="submit" style="padding: 12px 32px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
                 <%= isEditing ? 'Save Changes' : 'Create Employee Record' %>
             </button>
         </div>

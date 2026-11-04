@@ -259,10 +259,10 @@
     border-color: #94a3b8 !important;
   }
   .consult-tab-btn.active {
-    background: #0d9488 !important;
+    background: var(--clinical-blue, #0284c7) !important;
     color: #ffffff !important;
-    border-color: #0f766e !important;
-    box-shadow: 0 2px 6px rgba(13, 148, 136, 0.3) !important;
+    border-color: var(--clinical-blue-dark, #0369a1) !important;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3) !important;
   }
   .consult-tab-btn .tab-badge {
     background: rgba(0, 0, 0, 0.08);
@@ -287,7 +287,7 @@
         <i class="fa fa-arrow-left"></i> Back to Queue
       </a>
       <h2 style="margin: 0; font-size: 1.25em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-        <span style="color: #0d9488;">🩺</span> Clinical Consultation
+        <i class="fa-solid fa-stethoscope" style="color: var(--clinical-blue, #0284c7); margin-right: 6px;"></i> Clinical Consultation
       </h2>
       <span id="statusBadge" style="background: <%= isCompleted ? '#dcfce7' : '#ccfbf1' %>; color: <%= isCompleted ? '#15803d' : '#0f766e' %>; border: 1px solid <%= isCompleted ? '#bbf7d0' : '#99f6e4' %>; font-size: 0.78em; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 20px;">
         <%= isCompleted ? 'Completed' : (c.status || test.status || 'In Progress') %>
@@ -305,7 +305,7 @@
         <i class="fa fa-print"></i> Print Chart
       </a>
       <% if (!isCompleted) { %>
-        <button type="button" id="btnCompleteConsultation" class="button btn-primary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 700; font-size: 0.88em; background: #0d9488; border-color: #0f766e; color: #ffffff; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(13,148,136,0.3);">
+        <button type="button" id="btnCompleteConsultation" class="button btn-blue" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 700; font-size: 0.88em; background: linear-gradient(135deg, var(--clinical-blue, #0284c7) 0%, var(--clinical-blue-dark, #0369a1) 100%); border-color: var(--clinical-blue-dark, #0369a1); color: #ffffff; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(2,132,199,0.3);">
           <i class="fa fa-check-circle"></i> Complete Consultation
         </button>
       <% } else { %>
@@ -349,7 +349,7 @@
               <button type="button" onclick="switchConsultTab('tab-labs', document.getElementById('tabNavLabs'))" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 8px; font-size: 0.78em; font-weight: 700; cursor: pointer;">
                 <i class="fa fa-flask"></i> <%= formattedLabTests.length %> <%= formattedLabTests.length === 1 ? 'Lab Record' : 'Lab Records' %>
               </button>
-              <button type="button" onclick="switchConsultTab('tab-history', document.getElementById('tabNavHistory'))" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; padding: 2px 8px; font-size: 0.78em; font-weight: 700; cursor: pointer;">
+              <button type="button" onclick="switchConsultTab('tab-history', document.getElementById('tabNavHistory'))" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 8px; font-size: 0.78em; font-weight: 700; cursor: pointer;">
                 <i class="fa fa-history"></i> <%= previousConsultations.length %> Prior Visits
               </button>
               <% if (c.allergies && c.allergies.trim()) { %>
@@ -1020,7 +1020,7 @@
                   {
                     category: 'Thyroid, Serology & Immunology',
                     icon: 'fa-dna',
-                    color: '#7c3aed',
+                    color: '#0284c7',
                     items: [
                       'Thyroid Panel (TSH, FT3, FT4)',
                       'Dengue Duo (NS1 Ag, IgG, IgM)',
@@ -1124,7 +1124,7 @@
       </div>
     </div>
 
-    <!-- TAB 2: 🧪 PATIENT LABORATORY & DIAGNOSTIC RESULTS HISTORY (FULL WIDTH) -->
+    <!-- TAB 2: PATIENT LABORATORY & DIAGNOSTIC RESULTS HISTORY (FULL WIDTH) -->
     <div id="tab-labs" class="consult-tab-page" style="display: none;">
       <div class="card" style="padding: 22px 26px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
@@ -1207,16 +1207,16 @@
       </div>
     </div>
 
-    <!-- TAB 3: 📜 PREVIOUS CLINICAL CONSULTATIONS (FULL WIDTH) -->
+    <!-- TAB 3: PREVIOUS CLINICAL CONSULTATIONS (FULL WIDTH) -->
     <div id="tab-history" class="consult-tab-page" style="display: none;">
       <div class="card" style="padding: 22px 26px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <i class="fa fa-history" style="color: #6366f1; font-size: 1.2em;"></i>
+            <i class="fa fa-history" style="color: #0284c7; font-size: 1.2em;"></i>
             <h3 style="margin: 0; font-size: 1.15em; font-weight: 700; color: #0f172a;">
               Previous Outpatient Encounters & Doctor History
             </h3>
-            <span style="background: <%= previousConsultations.length > 0 ? '#e0e7ff' : '#f1f5f9' %>; color: <%= previousConsultations.length > 0 ? '#4338ca' : '#64748b' %>; font-size: 0.8em; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+            <span style="background: <%= previousConsultations.length > 0 ? '#e0f2fe' : '#f1f5f9' %>; color: <%= previousConsultations.length > 0 ? '#0369a1' : '#64748b' %>; font-size: 0.8em; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
               <%= previousConsultations.length %> prior visit<%= previousConsultations.length === 1 ? '' : 's' %>
             </span>
           </div>
@@ -1294,7 +1294,7 @@
       </div>
     </div>
 
-    <!-- TAB 4: 🖨️ OFFICIAL DOCUMENTS & RX (FULL WIDTH) -->
+    <!-- TAB 4: OFFICIAL DOCUMENTS & RX (FULL WIDTH) -->
     <div id="tab-docs" class="consult-tab-page" style="display: none;">
       <div class="card" style="padding: 22px 26px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
         <div style="margin-bottom: 20px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
@@ -1365,7 +1365,7 @@
           <!-- Document 4: Patient Medical Chart -->
           <div style="border: 1px solid #c7d2fe; background: #f5f7ff; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
-              <div style="width: 44px; height: 44px; border-radius: 10px; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-size: 1.3em; margin-bottom: 12px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #e0f2fe; color: #0369a1; display: flex; align-items: center; justify-content: center; font-size: 1.3em; margin-bottom: 12px;">
                 <i class="fa fa-notes-medical"></i>
               </div>
               <h4 style="margin: 0 0 6px 0; font-size: 1.05em; font-weight: 700; color: #3730a3;">

@@ -284,12 +284,12 @@
         <strong>Gezyne LIS Quality Control</strong> &bull; Levey-Jennings Report (<%= dataset.analyteName %> - <%= dataset.unit %>)
       </div>
       <button type="button" class="btn-sig-toggle" onclick="toggleSigEditor()" style="background: #334155; color: #f8fafc; border: 1px solid #64748b; font-size: 12px; padding: 5px 12px; border-radius: 4px; cursor: pointer;">
-        ✍️ Signatories (<span id="sigCountBadge"><%= sigs.hasPathologist2 ? '4 Signatories' : '3 Signatories (1 Pathologist)' %></span>)
+        <i class="fa fa-pen-nib" style="margin-right:6px;"></i> Signatories (<span id="sigCountBadge"><%= sigs.hasPathologist2 ? '4 Signatories' : '3 Signatories (1 Pathologist)' %></span>)
       </button>
     </div>
     <div style="display: flex; gap: 8px;">
       <button class="btn-back" onclick="window.close(); history.back();">&larr; Back to Equipment</button>
-      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> 🖨️ Print / Save as PDF</button>
+      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> Print / Save as PDF</button>
     </div>
   </div>
 
@@ -302,7 +302,7 @@
       </div>
       <div style="display: flex; align-items: center; gap: 8px;">
         <button type="button" onclick="executeAutoRefresh()" style="background: #0284c7; color: #fff; border: 1px solid #38bdf8; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: 600;">
-          🔄 Refresh Report Now
+          <i class="fa fa-rotate" style="margin-right:6px;"></i> Refresh Report Now
         </button>
         <button onclick="toggleSigEditor()" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;">&times; Close</button>
       </div>
@@ -456,9 +456,9 @@
           <td>&le; <%= st.teaPercent %>%</td>
           <td>
             <% if (st.inControl) { %>
-              <strong style="color: #16a34a;">✓ IN CONTROL (PASS)</strong>
+              <strong style="color: #16a34a;">IN CONTROL (PASS)</strong>
             <% } else { %>
-              <strong style="color: #dc2626;">❌ OUT OF CONTROL (FAIL)</strong>
+              <strong style="color: #dc2626;">OUT OF CONTROL (FAIL)</strong>
             <% } %>
           </td>
         </tr>
@@ -608,11 +608,11 @@
               <td><strong><%= p.zScore %></strong></td>
               <td>
                 <% if (p.status === 'ACCEPTED') { %>
-                  <span style="color: #16a34a; font-weight: bold;">✓ ACCEPT</span>
+                  <span style="color: #16a34a; font-weight: bold;">ACCEPT</span>
                 <% } else if (p.status === 'WARNING') { %>
-                  <span class="flag-warn">⚠️ WARN</span>
+                  <span class="flag-warn">WARN</span>
                 <% } else { %>
-                  <span class="flag-reject">❌ REJECT</span>
+                  <span class="flag-reject">REJECT</span>
                 <% } %>
               </td>
               <td><%= (p.rulesViolated && p.rulesViolated.length) ? p.rulesViolated.join(', ') : 'None' %></td>
@@ -672,7 +672,7 @@
       if (params.get('openDrawer') === '1') {
         const drawer = document.getElementById('sigEditorDrawer');
         if (drawer) drawer.style.display = 'block';
-        showToast('✓ Signatory updated and report refreshed!');
+        showToast('Signatory updated and report refreshed!');
       }
     });
 

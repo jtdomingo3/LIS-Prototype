@@ -3,13 +3,13 @@
   const themeMap = {
     'Payment Area': { icon: 'fa-cash-register', color: '#059669', bg: '#f0fdf4', border: '#a7f3d0', badgeBg: '#dcfce7', badgeColor: '#15803d', btnBg: '#059669' },
     'Extraction Area': { icon: 'fa-vial', color: '#d97706', bg: '#fffbe6', border: '#fef08a', badgeBg: '#fef3c7', badgeColor: '#b45309', btnBg: '#d97706' },
-    'Drug Test': { icon: 'fa-capsules', color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', badgeBg: '#f3e8ff', badgeColor: '#6b21a8', btnBg: '#7c3aed' },
+    'Drug Test': { icon: 'fa-capsules', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', badgeBg: '#ccfbf1', badgeColor: '#115e59', btnBg: '#0d9488' },
     'Ultrasound': { icon: 'fa-wave-square', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', btnBg: '#0284c7' },
     '2D Echo': { icon: 'fa-heartbeat', color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', badgeBg: '#ffe4e6', badgeColor: '#be123c', btnBg: '#e11d48' },
     'X-ray': { icon: 'fa-x-ray', color: '#ea580c', bg: '#fff7ed', border: '#ffedd5', badgeBg: '#ffedd5', badgeColor: '#c2410c', btnBg: '#ea580c' },
     'ECG': { icon: 'fa-file-medical-alt', color: '#0891b2', bg: '#ecfeff', border: '#cffaff', badgeBg: '#cffafe', badgeColor: '#0e7490', btnBg: '#0891b2' },
     'Sendout': { icon: 'fa-box-archive', color: '#475569', bg: '#f8fafc', border: '#e2e8f0', badgeBg: '#f1f5f9', badgeColor: '#334155', btnBg: '#475569' },
-    'Releasing of Result': { icon: 'fa-paper-plane', color: '#4f46e5', bg: '#f5f3ff', border: '#ddd6fe', badgeBg: '#ede9fe', badgeColor: '#5b21b6', btnBg: '#4f46e5' }
+    'Releasing of Result': { icon: 'fa-paper-plane', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', btnBg: '#0284c7' }
   };
   const isDoctor = String(areaName).toLowerCase().includes('doctor');
   const theme = themeMap[areaName] || (isDoctor ? { icon: 'fa-user-md', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', badgeBg: '#ccfbf1', badgeColor: '#0f766e', btnBg: '#0d9488' } : { icon: 'fa-hospital-user', color: '#10b981', bg: '#f8fafc', border: '#e2e8f0', badgeBg: '#f1f5f9', badgeColor: '#334155', btnBg: '#10b981' });
@@ -128,12 +128,12 @@
                         <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px;">
                           <% if (isPhilMember) { %>
                             <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700;" title="PhilHealth: <%= pPhilId || 'Member' %>">
-                              🩺 PhilHealth
+                              <i class="fa-solid fa-shield-halved" style="margin-right:3px;"></i> PhilHealth
                             </span>
                           <% } %>
                           <% if (isHealthCardMember) { %>
                             <span style="background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700;" title="HMO: <%= pHealthCardProvider %>">
-                              💳 <%= pHealthCardProvider || 'HMO' %>
+                              <i class="fa-solid fa-id-card" style="margin-right:3px;"></i> <%= pHealthCardProvider || 'HMO' %>
                             </span>
                           <% } %>
                         </div>
@@ -269,7 +269,7 @@
                             data-patient-healthcard="<%= isHealthCardMember ? '1' : '0' %>"
                             data-healthcard-provider="<%= pHealthCardProvider %>"
                             data-healthcard-id="<%= pHealthCardId %>"
-                            style="background: <%= isHealthCardMember ? '#6366f1' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isHealthCardMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
+                            style="background: <%= isHealthCardMember ? '#0284c7' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isHealthCardMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
                             <%= !isHealthCardMember ? 'disabled' : '' %>
                             onclick="submitChargedToHealthcard(this)" 
                             title="<%= isHealthCardMember ? ('Charge to Health Card (' + pHealthCardProvider + ')') : 'Disabled: Patient is not registered with a Health Card' %>">
@@ -440,7 +440,7 @@
                         '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
                           '<div><strong>Patient:</strong> ' + patientName + '</div>' +
                           '<div style="margin-top:4px;"><strong>HMO / Provider:</strong> ' + 
-                            '<span style="color:#4f46e5; font-weight:700;">' + provider + '</span>' +
+                            '<span style="color:#0284c7; font-weight:700;">' + provider + '</span>' +
                           '</div>' +
                           (cardId ? '<div style="margin-top:4px;"><strong>Card / Member #:</strong> <span style="font-weight:600; color:#0f172a;">' + cardId + '</span></div>' : '') +
                         '</div>' +
@@ -476,8 +476,8 @@
             btnText: 'Yes, Charge to Health Card',
             type: 'primary',
             icon: 'fas fa-id-card-clip',
-            iconBg: '#e0e7ff',
-            iconColor: '#4f46e5'
+            iconBg: '#e0f2fe',
+              iconColor: '#0284c7'
           });
         } else {
           proceedCharge();

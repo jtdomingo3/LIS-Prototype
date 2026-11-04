@@ -2,6 +2,7 @@
 
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
   <form action="/tests/<%= test.id %>/results" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <input type="hidden" name="_method" value="POST">
 
     <!-- Timing & Meta Bar -->
@@ -28,7 +29,7 @@
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
       <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
         <span style="display: flex; align-items: center; gap: 8px;">
-          <i class="fa fa-wave-square" style="color: #6366f1;"></i> Ultrasound Biometry & Clinical Parameters
+          <i class="fa fa-wave-square" style="color: #0284c7;"></i> Ultrasound Biometry & Clinical Parameters
         </span>
         <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Obstetric & Pelvic Imaging</span>
       </div>
@@ -141,15 +142,15 @@
             <label style="font-size: 0.85em; font-weight: 600; color: #64748b; margin: 0;">Footer Spacing:</label>
             <select name="impression_spacing" style="height: 30px; padding: 2px 6px; font-size: 0.85em; border-radius: 6px; border: 1px solid #cbd5e1;">
               <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default</option>
-              <option value="12px" <%= test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
-              <option value="24px" <%= test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
-              <option value="36px" <%= test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
-              <option value="48px" <%= test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
-              <option value="72px" <%= test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
-              <option value="96px" <%= test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
-              <option value="120px" <%= test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
-              <option value="180px" <%= test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
-              <option value="240px" <%= test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+              <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+              <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+              <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+              <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+              <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+              <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+              <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+              <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+              <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
               <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
                 <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
               <% } %>
