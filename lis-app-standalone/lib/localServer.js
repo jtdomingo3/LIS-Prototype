@@ -15,6 +15,7 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const path = require('path');
 const { createOfflineDb } = require('./offlineDb');
+const { getSecret } = require('./secretStore');
 
 function createLocalServer(pageCache, operationQueue, config, dataStore) {
   const app = express();
@@ -58,10 +59,14 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
   /* ── Session + flash ──────────────────────────────────────────── */
   app.use(session({
-    secret: 'lis-offline-standalone-secret',
+    secret: (typeof getSecret === 'function' ? getSecret('SESSION_SECRET') : null) || 'lis-offline-standalone-secret',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24h
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000, // 24h
+      httpOnly: true,
+      sameSite: 'lax'
+    },
   }));
   app.use(flash());
 

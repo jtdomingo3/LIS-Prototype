@@ -74,6 +74,16 @@ tools/security-audit/audit-report-latest.json
 **/*.secret
 .auth_token_secret
 **/.auth_token_secret
+.data_users_secret
+**/.data_users_secret
+.session_secret
+**/.session_secret
+**/.auth_token_secret
+**/.auth_token_secret
+.data_users_secret
+**/.data_users_secret
+.session_secret
+**/.session_secret
 
 # IDE and editor directories
 .idea/

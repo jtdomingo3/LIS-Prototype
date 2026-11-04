@@ -24,7 +24,14 @@
       try { btn.value = label; } catch(e){}
     } else {
       if (typeof btn.innerHTML !== 'undefined') btn.dataset.__orig = btn.innerHTML;
-      try { btn.innerHTML = '<span class="btn-loading-spinner" aria-hidden="true"></span>' + label; } catch(e){}
+      try {
+        btn.textContent = '';
+        const spinner = document.createElement('span');
+        spinner.className = 'btn-loading-spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        btn.appendChild(spinner);
+        btn.appendChild(document.createTextNode(label));
+      } catch(e){}
     }
 
     // Safety timeout: automatically restore button after 5 seconds in case the action does not navigate or reload

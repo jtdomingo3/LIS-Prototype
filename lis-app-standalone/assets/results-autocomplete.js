@@ -73,7 +73,12 @@
           dl.id = listId;
           document.body.appendChild(dl);
         }
-        dl.innerHTML = suggestions.map(s => `<option value="${s}"></option>`).join('');
+        dl.textContent = '';
+        suggestions.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s;
+          dl.appendChild(opt);
+        });
         input.setAttribute('list', listId);
         input.setAttribute('autocomplete', 'on');
       }

@@ -33,7 +33,9 @@ class NetworkMonitor extends EventEmitter {
             path: '/',
             method: 'HEAD',
             timeout: 3000,
-            rejectUnauthorized: false,
+            // HIPAA § 164.312(e)(1) Transmission Security: Validate TLS certs by default.
+            // In local lab test environments with self-signed certs, ALLOW_INSECURE_TLS=true can be explicitly configured.
+            rejectUnauthorized: process.env.ALLOW_INSECURE_TLS === 'true' || process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ? false : true,
           },
           () => resolve(true),
         );
