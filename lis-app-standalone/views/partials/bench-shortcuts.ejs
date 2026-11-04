@@ -2,9 +2,9 @@
 <style>
   .bench-kbd-hint {
     position: fixed;
-    bottom: 20px;
-    right: 24px;
-    z-index: 9998;
+    bottom: 22px;
+    right: 92px;
+    z-index: 9990;
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 24px;
@@ -50,6 +50,29 @@
       display: none; /* Hide keyboard legend on mobile touchscreens */
     }
   }
+
+  /* Bench Shortcuts Dark Mode */
+  [data-theme="dark"] .bench-kbd-hint {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #cbd5e1 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+  }
+  [data-theme="dark"] .bench-kbd-hint kbd {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    border-bottom: 2px solid #334155 !important;
+    color: #34d399 !important;
+  }
+  [data-theme="dark"] .bench-kbd-hint .kbd-sep {
+    color: #475569 !important;
+  }
+  [data-theme="dark"] .bench-kbd-saving {
+    background: #064e3b !important;
+    border-color: #10b981 !important;
+    color: #a7f3d0 !important;
+  }
+
 </style>
 
 <script>

@@ -122,8 +122,8 @@
     width: 320px;
     flex-shrink: 0;
     position: sticky;
-    top: 16px;
-    max-height: calc(100vh - 120px);
+    top: 86px;
+    max-height: calc(100vh - 110px);
     overflow-y: auto;
 }
 
@@ -380,6 +380,207 @@
         max-height: 250px;
         margin-bottom: 16px;
     }
+}
+
+
+/* ── Manual Dark Mode System ── */
+[data-theme="dark"] .manual-header-card {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .manual-header-title h2 {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .manual-header-title p {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .manual-search-input {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .manual-search-input:focus {
+    background: #0f172a !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .manual-toc-card {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="dark"] .manual-toc-header {
+    border-bottom: 1px solid #1f293d !important;
+}
+
+[data-theme="dark"] .manual-toc-header strong {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .manual-toc-header i {
+    color: #10b981 !important;
+}
+
+[data-theme="dark"] .manual-toc-nav a.toc-link {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .manual-toc-nav li.toc-level-1 > a.toc-link {
+    color: #f1f5f9 !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="dark"] .manual-toc-nav li.toc-level-2 > a.toc-link {
+    color: #cbd5e1 !important;
+    font-weight: 600 !important;
+}
+
+[data-theme="dark"] .manual-toc-nav li.toc-level-3 > a.toc-link {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .manual-toc-nav a.toc-link:hover,
+[data-theme="dark"] .manual-toc-nav a.toc-link.active {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+}
+
+[data-theme="dark"] .manual-doc-card {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #cbd5e1 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="dark"] .manual-h1,
+[data-theme="dark"] .manual-h2 {
+    color: #f8fafc !important;
+    border-bottom-color: #1f293d !important;
+}
+
+[data-theme="dark"] .manual-h3 {
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .manual-p,
+[data-theme="dark"] .manual-list li {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .manual-list li strong,
+[data-theme="dark"] .manual-p strong {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .manual-hr {
+    border-top-color: #1f293d !important;
+}
+
+[data-theme="dark"] .manual-code {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .manual-pre {
+    background: #09090b !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .manual-table th {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .manual-table td {
+    border: 1px solid #1f293d !important;
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .manual-table tr:hover td {
+    background: #162032 !important;
+}
+
+/* Alert Boxes & Blockquotes in Manual */
+[data-theme="dark"] .manual-blockquote {
+    background: #0b0f19 !important;
+    border-left: 4px solid #475569 !important;
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .alert-important,
+[data-theme="dark"] .manual-blockquote.alert-important {
+    background: #230f13 !important;
+    border-color: #dc2626 !important;
+    border-left: 5px solid #dc2626 !important;
+    color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .alert-important strong,
+[data-theme="dark"] .manual-blockquote.alert-important strong {
+    color: #f87171 !important;
+}
+
+[data-theme="dark"] .alert-warning,
+[data-theme="dark"] .manual-blockquote.alert-warning {
+    background: #261a07 !important;
+    border-color: #d97706 !important;
+    border-left: 5px solid #d97706 !important;
+    color: #fcd34d !important;
+}
+
+[data-theme="dark"] .alert-warning strong,
+[data-theme="dark"] .manual-blockquote.alert-warning strong {
+    color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .alert-note,
+[data-theme="dark"] .manual-blockquote.alert-note {
+    background: #0c1f38 !important;
+    border-color: #0284c7 !important;
+    border-left: 5px solid #0284c7 !important;
+    color: #7dd3fc !important;
+}
+
+[data-theme="dark"] .alert-note strong,
+[data-theme="dark"] .manual-blockquote.alert-note strong {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .alert-tip,
+[data-theme="dark"] .manual-blockquote.alert-tip {
+    background: #062319 !important;
+    border-color: #059669 !important;
+    border-left: 5px solid #059669 !important;
+    color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .alert-tip strong,
+[data-theme="dark"] .manual-blockquote.alert-tip strong {
+    color: #34d399 !important;
+}
+
+/* KaTeX Formulas in Manual */
+[data-theme="dark"] .katex-display {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: none !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .katex-display *,
+[data-theme="dark"] .katex,
+[data-theme="dark"] .katex * {
+    color: #f8fafc !important;
 }
 
 @media print {

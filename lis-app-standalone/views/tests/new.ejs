@@ -329,6 +329,205 @@
       padding: 10px 12px;
     }
   }
+
+  /* ── Dark Mode Support for Test Assignment & Packages ── */
+  [data-theme="dark"] .test-order-layout {
+    background: #111827 !important;
+    border-color: #1f293d !important;
+  }
+  [data-theme="dark"] .test-order-layout div[style*="background: #ffffff"],
+  [data-theme="dark"] .test-order-layout div[style*="background:#ffffff"] {
+    background: #111827 !important;
+    border-color: #1f293d !important;
+  }
+  [data-theme="dark"] .test-item-card {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .test-item-card span {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .test-item-card:hover {
+    background: #162032 !important;
+    border-color: #10b981 !important;
+  }
+  [data-theme="dark"] .test-item-card.selected,
+  [data-theme="dark"] .test-item-card:has(input:checked) {
+    background: #06281e !important;
+    border-color: #10b981 !important;
+  }
+  [data-theme="dark"] .test-item-card:has(input:checked) span {
+    color: #6ee7b7 !important;
+  }
+  [data-theme="dark"] .test-item-card input.test-qty,
+  [data-theme="dark"] .test-item-card input.test-amount,
+  [data-theme="dark"] .test-item-card textarea.test-remark {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .test-nav-tabs {
+    border-bottom-color: #1f293d !important;
+  }
+  [data-theme="dark"] .test-tab-btn {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .test-tab-btn:hover {
+    color: #f8fafc !important;
+    background: #162032 !important;
+  }
+  [data-theme="dark"] .test-tab-btn.active {
+    color: #10b981 !important;
+    border-bottom-color: #10b981 !important;
+    background: #06281e !important;
+  }
+  [data-theme="dark"] .tab-badge {
+    background: #064e3b !important;
+    color: #a7f3d0 !important;
+    border-color: #10b981 !important;
+  }
+  [data-theme="dark"] #tabSubNotice {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] #backButtonCatalog {
+    background: #0b0f19 !important;
+    border-color: #1f293d !important;
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .test-order-sticky-header {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  }
+  [data-theme="dark"] .test-order-sticky-header span {
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .status-toggle-btn {
+    background: #0b0f19 !important;
+    border: 1.5px solid #1f293d !important;
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .status-toggle-btn:hover {
+    background: #162032 !important;
+    border-color: #10b981 !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .status-toggle-btn.active {
+    background: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+  }
+  [data-theme="dark"] #discountStatusBadge {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .pkg-card {
+    background: #111827 !important;
+    border: 2px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  }
+  [data-theme="dark"] .pkg-card:hover {
+    background: #172033 !important;
+    border-color: #10b981 !important;
+  }
+  [data-theme="dark"] .pkg-card.selected {
+    background: #06281e !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.25) !important;
+  }
+  [data-theme="dark"] .pkg-item {
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .pkg-extra-item {
+    color: #38bdf8 !important;
+  }
+  [data-theme="dark"] .pkg-ua-badge.free {
+    background: #064e3b !important;
+    color: #a7f3d0 !important;
+    border: 1px solid #10b981 !important;
+  }
+  [data-theme="dark"] .pkg-ua-badge.paid {
+    background: #451a03 !important;
+    color: #fde68a !important;
+    border: 1px solid #d97706 !important;
+  }
+  [data-theme="dark"] .pkg-ua-badge[style*="#f8fafc"],
+  [data-theme="dark"] .pkg-ua-badge[style*="f8fafc"] {
+    background: #0b0f19 !important;
+    border: 1px dashed #334155 !important;
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .pkg-btn-select {
+    background: #0b0f19 !important;
+    border-color: #1f293d !important;
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .pkg-card.selected .pkg-btn-select {
+    background: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+  }
+  [data-theme="dark"] .pkg-card button[title="Edit Package"] {
+    background: #0b0f19 !important;
+    border-color: #1f293d !important;
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .pkg-card div[style*="border-top"] {
+    border-top-color: #1f293d !important;
+  }
+  [data-theme="dark"] .pkg-card div[style*="border-top"] span:first-child {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .pkg-card div[style*="border-top"] span:last-child {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .test-order-grid div[style*="#faf5ff"],
+  [data-theme="dark"] .test-order-grid div[style*="faf5ff"] {
+    background: #1a102a !important;
+    border-color: #6b21a8 !important;
+  }
+  [data-theme="dark"] .test-order-grid div[style*="#faf5ff"] span,
+  [data-theme="dark"] .test-order-grid div[style*="faf5ff"] span {
+    color: #c084fc !important;
+  }
+  [data-theme="dark"] .test-order-grid div[style*="#f0f9ff"],
+  [data-theme="dark"] .test-order-grid div[style*="f0f9ff"] {
+    background: #0c1f38 !important;
+    border-color: #0369a1 !important;
+  }
+  [data-theme="dark"] .test-order-grid div[style*="#f0f9ff"] > div:first-child,
+  [data-theme="dark"] .test-order-grid div[style*="f0f9ff"] > div:first-child {
+    color: #38bdf8 !important;
+  }
+  [data-theme="dark"] .test-order-grid div[style*="#f0f9ff"] label,
+  [data-theme="dark"] .test-order-grid div[style*="f0f9ff"] label {
+    background: #111827 !important;
+    border-color: #1f293d !important;
+    color: #e2e8f0 !important;
+  }
+  [data-theme="dark"] .test-order-grid div[style*="#f0f9ff"] label:hover,
+  [data-theme="dark"] .test-order-grid div[style*="f0f9ff"] label:hover {
+    background: #162032 !important;
+    border-color: #0284c7 !important;
+  }
+  [data-theme="dark"] #pkgModalBackdrop .pkg-modal-dialog {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] #pkgModalBackdrop div[style*="#f8fafc"] {
+    background: #0b0f19 !important;
+    border-color: #1f293d !important;
+  }
+  [data-theme="dark"] #pkgModalBackdrop div[style*="#fefce8"] {
+    background: #261a07 !important;
+    border-color: #d97706 !important;
+  }
+  [data-theme="dark"] #pkgModalBackdrop div[style*="#fefce8"] label {
+    color: #fde68a !important;
+  }
+
 </style>
 
 <div class="card test-order-layout" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
