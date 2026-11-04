@@ -12,133 +12,133 @@ The standalone desktop application operates **100% autonomously without network 
 
 ---
 
-## 📜 Version History & Release Notes
+## Version History & Release Notes
 
 ### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects) — Current Release**
-- 🧪 **Automated Chemistry Calculation Engine & Calculation Parity**:
+- **Automated Chemistry Calculation Engine & Calculation Parity**:
   - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
   - Zero `NaN` and zero arithmetic error safeguards across both input events and server-side worksheet processing.
-- 🎨 **Enterprise-Grade UI/UX Modernization & Design Token System**:
+- **Enterprise-Grade UI/UX Modernization & Design Token System**:
   - Consistent corporate client branding palette across all 143 standalone desktop EJS views, modals, cards, badges, and sidebars.
   - FontAwesome 5 SVG icon parity for PhilHealth Konsulta (`fas fa-file-invoice-dollar`), Health Card / HMO (`fas fa-id-card-alt`), Reception Walk-in Desk (`fas fa-user-plus`), and Ultrasound Suites.
   - High-contrast accessible typography, dynamic hover transitions, micro-animations, and verified zero CSS/layout breakages.
-- 🛡️ **Master 17-Suite Comprehensive Regression Framework**:
+- **Master 17-Suite Comprehensive Regression Framework**:
   - Unified 17-suite automated test framework (`test/run-all-system-tests.js` and `test/system-regression.test.js`) covering 100% of endpoints, multi-role authentication, RBAC authorization matrix, CSRF tokens, diagnostic worksheets, offline queue, inventory, equipment QC, and PhilHealth SOAs.
   - 100% test pass rate on standalone client with 0 defects and 0 regressions.
-- 🤖 **GezyneBot AI Knowledge Base v3.0.0**:
+- **GezyneBot AI Knowledge Base v3.0.0**:
   - Upgraded knowledge base synchronization covering all 16 official user manual chapters, clinical reference panic values, and Philippine statutory updates.
 
 ### **v2.6.5 (better-sqlite3 ACID Migration, SQLite Sync Queue, printToPDF, PhilHealth/HMO, Ultrasound Suite & MM/DD/YYYY Dates)**
-- 🛡️ **Zero-RAM Data Loss Architecture (`better-sqlite3`)**:
+- **Zero-RAM Data Loss Architecture (`better-sqlite3`)**:
   - Replaced in-RAM `sql.js` with native synchronous C++ `better-sqlite3` disk storage. Brownouts and sudden PC shutoffs will no longer wipe unsaved transactions.
   - Enabled Write-Ahead Logging (`PRAGMA journal_mode = WAL;`) for uninterrupted concurrent queries between background workers, report generators, and user workflows.
-- 🔄 **ACID-Compliant SQLite Sync Queue (`sync_queue`)**:
+- **ACID-Compliant SQLite Sync Queue (`sync_queue`)**:
   - Replaced legacy `pending-operations.json` file writes with a dedicated `sync_queue` table in SQLite, ensuring atomic transaction rollback and protection against write truncation during system crashes.
-- 🖨️ **Electron Native PDF Printing (`webContents.printToPDF`)**:
+- **Electron Native PDF Printing (`webContents.printToPDF`)**:
   - Fully purged deprecated `html-pdf` (and PhantomJS). Replaced with Electron's built-in `webContents.printToPDF()`, generating clean, fast, dependency-free clinical PDFs directly from EJS views.
-- 🏥 **Offline PhilHealth & Health Card / HMO Module (`/healthcard`)**:
+- **Offline PhilHealth & Health Card / HMO Module (`/healthcard`)**:
   - Full local-first PhilHealth Konsulta support (13 primary care diagnostic procedures, PIN validation, SOA generation) and HMO coverage management (55+ diagnostic procedures, LOA approval codes, copay tracking).
-- 📦 **Diagnostic Packages 1–6 & Senior/PWD Urinalysis Exemption**:
+- **Diagnostic Packages 1–6 & Senior/PWD Urinalysis Exemption**:
   - Bundled package selection with automatic 20% Senior/PWD discount and annual free Urinalysis handling.
-- 🩺 **Complete Ultrasound Suite (6 Specialized Templates)**:
+- **Complete Ultrasound Suite (6 Specialized Templates)**:
   - 1st Trimester Obstetrics, Pelvic Ultrasound, Pelvic Biometry with EFW, TVS, BPS scoring, and Abdominal/KUBP/HBT with Hadlock biometry formulas.
-- 📅 **Philippine Clinical Date Standard (`MM/DD/YYYY`)**:
+- **Philippine Clinical Date Standard (`MM/DD/YYYY`)**:
   - Standardized date formatting across all local forms, reports, and sync payloads.
-- ✍️ **Line Break & Formatting Engine Parity**:
+- **Line Break & Formatting Engine Parity**:
   - Proper soft line breaks (`<br>`) in Markdown manual, GezyneBot desktop assistant, and clinical textareas.
 
 ### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence)**
-- 🌐 **Web-Augmented RAG & Offline Workstation Parity**:
+- **Web-Augmented RAG & Offline Workstation Parity**:
   - Offline GezyneBot AI client synchronized to LIS Version 2.6.4 with live web search capabilities, interactive hyperlink rendering, and unicode bullet parsing.
   - Interactive slider switch with session toggle memory on the desktop floating assistant widget.
-- ⚙️ **System-Wide Architecture Upgrades**:
+- **System-Wide Architecture Upgrades**:
   - Complete parity with central server v2.6.4 across models, view layouts, settings synchronization, and clinical reference materials.
 
 ### **v2.6.3 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3)**
-- 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
+- **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
   - Full local-first offline support for Employee Master Directory (`/hr/employees`), Employee Self-Service / Personal Portal (`/hr/my`), Daily Time Record (DTR) attendance logging (`/hr/my/dtr`), and Leave Application workflows (`/hr/leaves`).
   - Integrated Philippine statutory deductions engine (`lib/philippineContributions.js`) and payroll calculation engine (`lib/payrollComputer.js`) supporting 2025/2026 SSS with WISP/MPF, PhilHealth 5%, Pag-IBIG HDMF, and BIR TRAIN graduated withholding tax.
   - Complete printable HR forms: Confidential Employee Payslip (`/hr/print/payslip/:id`), Certificate of Employment (COE) (`/hr/print/coe/:id`), Certificate of Exit Clearance (`/hr/print/clearance/:id`), and BIR 2316 Tax Summary report (`/hr/print/tax-summary/:id/:year`).
-- 💰 **Costing & Financial Profitability (P&L) Module (`/costing`)**:
+- **Costing & Financial Profitability (P&L) Module (`/costing`)**:
   - Local-first offline Cost-Per-Test analysis engine (`/costing/cost-per-test`), Clinic Operating Expenses tracker (`/costing/expenses`), and Monthly Income Statement financial analytics (`/costing/monthly`).
   - Itemized reagent, consumable supply, labor, and depreciation unit cost tracking with automated gross margin % and SRP computations.
-- 🫀 **2D Echocardiography Dual-Form & Letter Print Engine**:
+- **2D Echocardiography Dual-Form & Letter Print Engine**:
   - Dual-sheet architecture supporting separate or combined Info Sheet (`?sheet=info`) and Reading Sheet (`?sheet=reading`) Letter printing with zero page overflow.
   - Standardized 9-subcolumn Doppler valve matrix (Mitral, Aortic, Tricuspid, Pulmonic) with Left = Value and Right = Reference alignment.
   - Pulmonic Vein ratio measurements and automatic Mitral Max Velocity `E:` / `A:` label defaults.
   - Rebalanced 6-column patient demographic header preventing phone number wrapping.
-- 🤖 **GezyneBot AI Clinical Assistant v2.6.3**:
+- **GezyneBot AI Clinical Assistant v2.6.3**:
   - Updated offline GezyneBot knowledge base to v2.6.3 with Sections 13 (HR & Payroll), 14 (Costing & P&L), and 15 (2D Echocardiography).
   - Modernized chatbot welcome interface with HR and Costing interactive query explorer cards.
-- 🔄 **Embedded Desktop Express Engine Parity**:
+- **Embedded Desktop Express Engine Parity**:
   - Synchronized `localServer.js`, `middleware/auth.js`, and desktop `layout.ejs` navigation bars to provide seamless offline access to `/hr` and `/costing` routes.
 
 ---
 
 ### **v2.6.3 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
-- 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
+- **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Full outpatient clinical encounter documentation adhering to international SOAP (Subjective, Objective, Assessment, Plan) guidelines and DOH Philippine Package of Essential NCD Interventions (PhilPEN) Clinical Practice Guidelines (CPG).
   - **Subjective & DOH PhilPEN Profiling**: Chief complaint, HPI, PMH, current medications, review of systems (ROS), allergy warnings (with NKDA flag), interactive Familial NCD checklist with clickable pills (Hypertension, T2DM, CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes, tobacco pack-years calculator, and alcohol screening.
   - **Objective Clinical Vitals & Real-Time BMI Engine**: Vital signs grid (BP, HR, RR, Temp, SpO2, Blood Glucose, Pain Scale, Waist) with real-time Asia-Pacific / DOH Philippines BMI calculation and color-coded status badges, physical exam breakdown, and integrated patient diagnostic history with one-click report previews.
   - **Assessment & Plan**: Searchable ICD-10 diagnostic directory, differential diagnoses, multi-item Rx prescription builder, laboratory and imaging diagnostic requisitions with custom test ordering, lifestyle advice, and follow-up scheduling.
-- 🖨️ **Clinical Document Printing Suite**:
+- **Clinical Document Printing Suite**:
   - **Patient Medical Chart** (`/consultations/:testId/print/chart`): Full encounter hard-copy printout with official facility letterhead, complete SOAP documentation, vitals grid, DOH PhilPEN risk assessment, prescriptions table, and physician signature block.
   - **Optimized Print Layout**: Top-level `@page { size: portrait; margin: 6mm 8mm; }` eliminating oversized paper margins across Letter and A4 sizes, paired with a borderless `.chart-sheet` print container matching the on-screen form view proportions.
   - **Official Prescription Pad** (`/consultations/:testId/print/prescription`): Philippine standard Rx pad with attending physician's PRC License, PTR, and S2 credentials.
   - **Medical Certificate** (`/consultations/:testId/print/med-cert`): Formal fit-to-work / illness certificate with diagnosis, recommended rest periods, and physician designation.
   - **Laboratory Request Requisition** (`/consultations/:testId/print/lab-request`): Standard requisition sheet for laboratory and imaging orders.
   - **Standardized Official Clinic Header**: Strictly one-line clinic title (`Gezyne Clinical Laboratory & Medical Clinic`) featuring complete facility address (`0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan (Near Municipal Basketball Court)`), official DOH License Number (`Lic. No. 03-435-15CL-20`), and contact hotlines (`Tel: 0917-649-0807 / 0960-390-0921 / (044) 795-5007`).
-- 👨‍⚕️ **Physician Auto-Capture & Status Lifecycle**:
+- ‍ **Physician Auto-Capture & Status Lifecycle**:
   - Automatic identity capture for logged-in physician accounts, auto-populating PRC license, PTR, and professional designation (e.g., "Internist").
   - Clinic room name matching without duplicate accounts, and real-time dropdown synchronization linking physician selection to credentials.
   - Universal recognition of "Checked" status as completed encounters across all dashboards, census reports, badges, and filters.
-- 🔬 **Clinical Batch Worksheet & Diagnostic Report Separation**:
+- **Clinical Batch Worksheet & Diagnostic Report Separation**:
   - Standardized `isDoctorVisitTest` helper isolating outpatient doctor check-up visits from laboratory batch worksheets (`/worksheet/download` and `/worksheet/preview`) and diagnostic report exports.
   - Laboratory worksheets strictly display diagnostic laboratory specimens (CBC, Urinalysis, Blood Chemistry, etc.), keeping MedTech worklists focused.
-- 🔄 **Two-Way Offline Workstation Parity**:
+- **Two-Way Offline Workstation Parity**:
   - 100% offline consultation recording, prescription drafting, and chart completion on standalone workstations with automatic two-way background sync and discrepancy auditing.
 
 ---
 
 ### **v2.5.0 (Quality Assurance, NEQAS EAMC PT Surveys, Equipment QC & Security Hardening)**
-- 🔬 **Equipment Management & Levey-Jennings Quality Control (QC)**:
+- **Equipment Management & Levey-Jennings Quality Control (QC)**:
   - Full-lifecycle instrumentation registry supporting Clinical Chemistry, Hematology, Electrolyte, Urinalysis analyzers, and Radiology/X-Ray equipment (with DOH/FDA CDRRHR specifications).
   - High-precision Levey-Jennings (LJ) statistical charting engine with Westgard Multi-Rule Evaluation (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10:x), automated Z-score computations, and violation alerts.
   - Multi-level control lots (Level 1 Normal & Level 2 High) with pre-populated multi-analyte standard panels (e.g. 21 clinical chemistry analytes).
   - Interactive date filtering (Month-to-Date, custom date ranges) dynamically recalculating observed mean, standard deviation, coefficient of variation (%CV), and total error (TEobs).
   - Multi-signatory stamping options supporting MedTech, Reviewing Senior MedTech, and Pathologist credentials.
   - Granular QC run management with "Drop Previous Run" feature for rapid clerical error rectification.
-- 🏛️ **National External Quality Assessment Scheme (NEQAS) & Dynamic NRL Registration**:
+- **National External Quality Assessment Scheme (NEQAS) & Dynamic NRL Registration**:
   - Full integration with East Avenue Medical Center (EAMC) National Reference Laboratory for Environmental and Occupational Health, Toxicology and Micronutrient Assay (NRL-EOHTMA) for accredited Drug Testing PT surveys (Cannabinoids/THC & Methamphetamine/MET).
   - Dynamic National Reference Laboratory (NRL) management: register, view, and manage custom reference institutions (EAMC, LCP, NKTI, RITM, PHC) with persistent storage across central and offline workstations.
   - DOH-compliant printable NEQAS Quality Assurance Assessment Certificates with automatic Standard Deviation Index (SDI) categorization and mandatory Corrective Action Form generation for out-of-tolerance surveys (|SDI| >= 3.0).
   - Consolidated multi-analyte Monthly QC Summary inspection reports ready for DOH regulatory licensing audits.
-- 👥 **Expanded Role-Based Access Control (RBAC) & Process Owner Delegation**:
+- **Expanded Role-Based Access Control (RBAC) & Process Owner Delegation**:
   - Added dedicated **Equipment & QC Module Permission** (`equipment`) across User Management (`new.ejs`, `edit.ejs`, `show.ejs`).
   - Seamless delegation to laboratory Process Owners, Chief Medical Technologists, and Quality Managers without requiring full Administrator access.
   - Automated home-route redirection routing designated equipment process owners directly to `/equipment`.
-- 🛡️ **Enterprise Security Hardening & Credential Sanitization**:
+- **Enterprise Security Hardening & Credential Sanitization**:
   - Complete elimination of default/legacy test passwords (`password123`) across the entire repository codebase, documentation, seeders, and views.
   - Untracked `.env` files from version control and strengthened `.gitignore` with universal recursive patterns (`*.env`, `**/.env`).
   - Strict SQL injection prevention using pre-compiled parameterized queries, type validation, and defensive data access layers.
   - 100% compliance score achieved across automated OWASP Top 10, NIST SP 800-63B, and CIS benchmark security audit checks on both Server and Standalone targets.
-- 🔄 **Two-Way Standalone Offline Synchronization**:
+- **Two-Way Standalone Offline Synchronization**:
   - Real-time and queued offline synchronization for Equipment maintenance logs, QC entries, and NEQAS proficiency records.
   - Deterministic ID mapping and conflict-free data merge between standalone desktop workstations and central server.
 
 ---
 
 ### **v2.4.0 (Enterprise Clinical Intelligence & Operations)**
-- 🤖 **Clinical & Operational AI Chatbot Assistant**:
+- **Clinical & Operational AI Chatbot Assistant**:
   - In-app desktop assistant providing immediate access to laboratory Standard Operating Procedures (SOP), reference ranges, specimen requirements, and operational guidelines.
-- 📦 **Reagent & Supply Inventory Tracking System**:
+- **Reagent & Supply Inventory Tracking System**:
   - Full desktop inventory management for laboratory reagents, test cartridges, extraction kits, and consumables.
   - Expiry date monitoring, Lot/Batch tracking, low-stock alerts, and automated stock deductions per test.
-- 🎨 **Modernized UI / UX Design**:
+- **Modernized UI / UX Design**:
   - Polished desktop layout with rich analytical cards, status badges, responsive modals, and subtle micro-animations.
   - Floating auto-expanding patient autocomplete search overlay in report preview screens.
   - Persistent fullscreen mode across page transitions (`F11`).
-- 📊 **Clinical Batch Worksheet & Registry Retrieval Overhaul**:
+- **Clinical Batch Worksheet & Registry Retrieval Overhaul**:
   - **Standardized Batch Diagnostic Worksheet**:
     - Renamed approving pathologist / doctor column to **`APPROVED BY`** and **`APPROVED BY LICENSE`**.
     - Corrected **`REQUESTED BY`** to display the attending physician from patient registration (`patient.physician`).
@@ -148,10 +148,10 @@ The standalone desktop application operates **100% autonomously without network 
   - **Patient Demographics Registry Export**:
     - Replaced `Created By` with date-specific **`Tests Requested`** for census and audit tracking.
     - Added **`Sex`** column directly after **`Age`** in both live preview and exported spreadsheets.
-- 🛡️ **Reception Multi-Station Sequence Protection**:
+- **Reception Multi-Station Sequence Protection**:
   - Prevents patients with late-added tests from being routed back to stations they have already completed.
   - PhilHealth membership verification and zero-charge routing with confirmation security prompts.
-- 🖨️ **Hardware Thermal Printing & Stream Sync**:
+- **Hardware Thermal Printing & Stream Sync**:
   - Dedicated thermal barcode printer integration (ESC/POS) with environment variable fallback (`PRINTER_NAME`) and diagnostic testing tools.
   - Granular SSE sync control with configurable page allowlist and rate limiters.
 
@@ -176,7 +176,7 @@ The standalone desktop application operates **100% autonomously without network 
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Node.js 18+** installed on the workstation
@@ -212,7 +212,7 @@ module.exports = {
 
 ---
 
-## 🏗️ Architecture & Synchronization Flow
+## Architecture & Synchronization Flow
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -250,7 +250,7 @@ module.exports = {
 
 ---
 
-## 🧪 Automated Testing Suite
+## Automated Testing Suite
 
 All automated tests are centralized in the root [`test/`](../test) directory.
 
@@ -267,7 +267,7 @@ node test/settings-system.test.js
 
 ---
 
-## 📦 Building the Windows Installer (v3.0.0)
+## Building the Windows Installer (v3.0.0)
 
 To compile the production Windows desktop installer package:
 
@@ -283,7 +283,7 @@ Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 3.0.0.exe`
 
 ---
 
-## 💾 Local Storage Directory
+## Local Storage Directory
 
 All local databases, offline queues, and cached assets are persisted under the user profile:
 
@@ -297,7 +297,7 @@ All local databases, offline queues, and cached assets are persisted under the u
 
 ---
 
-## 📌 License
+## License
 
 Distributed under the **MIT License**. Engineered for **Gezyne Clinical Laboratory**.
 

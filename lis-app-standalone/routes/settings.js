@@ -252,6 +252,8 @@ router.get('/', requireAuth, async (req, res) => {
       maskedKey,
       currentModel,
       requirePaymentAmount,
+    autoLogoutEnabled: Boolean(settings.autoLogoutEnabled),
+    idleTimeoutMinutes: parseInt(settings.idleTimeoutMinutes, 10) || 15,
       doctor1Name: settings.doctor1Name || process.env.DOCTOR_1_NAME || 'Dr. Lorenzo',
       doctor2Name: settings.doctor2Name || process.env.DOCTOR_2_NAME || 'Dr. Arcilla',
       gezynePath: settings.gezynePath || process.env.GEZYNE_PATH || '',
@@ -469,6 +471,8 @@ router.post('/', requireAuth, (req, res) => {
     cur.doctor2Name = doc2;
     cur.gezynePath = gezyne;
     cur.requirePaymentAmount = reqPay;
+    cur.autoLogoutEnabled = (flags.autoLogoutEnabled === 'on' || flags.autoLogoutEnabled === true || flags.autoLogoutEnabled === 'true');
+    cur.idleTimeoutMinutes = parseInt(flags.idleTimeoutMinutes, 10) || 15;
 
     process.env.DOCTOR_1_NAME = doc1;
     process.env.DOCTOR_2_NAME = doc2;

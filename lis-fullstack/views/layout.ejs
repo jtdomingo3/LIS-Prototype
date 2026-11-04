@@ -1374,7 +1374,14 @@
         }
       });
     </script>
-    </head>
+        <script>
+      try {
+        if (localStorage.getItem('gezyne_theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch(e) {}
+    </script>
+</head>
 <body>
     <div class="container">
         <!-- Sidebar -->
@@ -1550,6 +1557,11 @@
                             <kbd style="position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:0.65em; font-family:var(--font-mono); font-weight:700; color:#94a3b8; background:#ffffff; border:1px solid #e2e8f0; border-radius:4px; padding:2px 5px; pointer-events:none;">⌘K</kbd>
                         </div>
                     </form>
+
+                                        <!-- Night Shift / Dark Mode Preset Toggle -->
+                    <button id="themeToggleBtn" type="button" aria-label="Toggle Night Shift / Dark Mode" title="Toggle Night Shift / Dark Mode" style="background:#ffffff;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s ease;">
+                        <i id="themeToggleIcon" class="fas fa-moon" style="color:#64748b;font-size:0.95rem;"></i>
+                    </button>
 
                     <!-- Notifications -->
                     <div id="notificationWidget" style="position:relative;">
@@ -2885,10 +2897,15 @@
       <%- include('partials/gezynebot-widget') %>
     <% } %>
     <!-- Client-Side Session Inactivity & Idle Warning (active for authenticated users) -->
-    <% if (!isDocumentOrPrintPage && typeof user !== 'undefined' && user) { %>
+    <% if (!isDocumentOrPrintPage && typeof user !== 'undefined' && user && (typeof autoLogoutEnabled !== 'undefined' && autoLogoutEnabled)) { %>
       <%- include('partials/idle-warning-modal') %>
     <% } %>
     <!-- Laboratory Bench Rapid Keyboard Shortcuts (Active for diagnostic results entry) -->
     <%- include('partials/bench-shortcuts') %>
+    <!-- Clinical Night Duty Theme Engine -->
+    <%- include('partials/theme-engine') %>
+
+    <!-- Universal Barcode Accessioning & Feedback Engine -->
+    <%- include('partials/barcode-engine') %>
 </body>
 </html>

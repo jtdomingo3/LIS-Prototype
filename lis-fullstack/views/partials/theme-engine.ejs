@@ -1,0 +1,208 @@
+<!-- Gezyne Clinical Dark Mode / 24-7 Night Duty Engine -->
+<style>
+  /* ==========================================================================
+     Clinical Precision Dark Theme Tokens & Overrides (Night Shift Preset)
+     ========================================================================== */
+  [data-theme="dark"] {
+    --bg-light: #09090b;
+    --surface-app: #09090b;
+    --surface-card: #141417;
+    --surface-muted: #18181b;
+    --surface-subtle: #27272a;
+    --border-subtle: #27272a;
+    --border-strong: #3f3f46;
+    --text-dark: #f8fafc;
+    --text-muted: #94a3b8;
+    --text-white: #ffffff;
+    --card-bg: #141417;
+    color-scheme: dark;
+  }
+
+  [data-theme="dark"] body {
+    background-color: #09090b !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .main-content {
+    background-color: #09090b;
+  }
+
+  [data-theme="dark"] .header {
+    background-color: #141417 !important;
+    border-color: #27272a !important;
+  }
+
+  [data-theme="dark"] .header h1,
+  [data-theme="dark"] .header strong {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .header-search-form input {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] #notifBtn,
+  [data-theme="dark"] #themeToggleBtn {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+  }
+
+  [data-theme="dark"] #notifBtn i,
+  [data-theme="dark"] #themeToggleBtn i {
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] #notifDropdown {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #f8fafc !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  [data-theme="dark"] .card,
+  [data-theme="dark"] .stat-card,
+  [data-theme="dark"] .reception-area-tile,
+  [data-theme="dark"] .modal-box,
+  [data-theme="dark"] .clinical-modal-box {
+    background-color: #141417 !important;
+    border-color: #27272a !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .stat-card {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  [data-theme="dark"] table {
+    background-color: #141417 !important;
+  }
+
+  [data-theme="dark"] table thead tr {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+  }
+
+  [data-theme="dark"] table th {
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] table tr {
+    border-color: #27272a !important;
+    background-color: transparent !important;
+  }
+
+  [data-theme="dark"] table tr:hover {
+    background-color: #1c1c21 !important;
+  }
+
+  [data-theme="dark"] table td {
+    border-color: #27272a !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  [data-theme="dark"] select,
+  [data-theme="dark"] textarea {
+    background-color: #18181b !important;
+    border-color: #3f3f46 !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] input:focus,
+  [data-theme="dark"] select:focus,
+  [data-theme="dark"] textarea:focus {
+    background-color: #1c1c21 !important;
+    border-color: var(--primary-brand, #10b981) !important;
+  }
+
+  [data-theme="dark"] .btn-secondary {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .btn-secondary:hover {
+    background-color: #3f3f46 !important;
+  }
+
+  [data-theme="dark"] .user-pill-link {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+  }
+
+  [data-theme="dark"] .user-pill-link strong {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] code {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #34d399 !important;
+  }
+
+  [data-theme="dark"] .bench-kbd-hint {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #cbd5e1 !important;
+  }
+
+  [data-theme="dark"] .bench-kbd-hint kbd {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #f8fafc !important;
+  }
+
+  /* CRITICAL: Strict print protection — physical prints always remain crisp white paper with black ink */
+  @media print {
+    [data-theme="dark"],
+    [data-theme="dark"] body,
+    [data-theme="dark"] .card,
+    [data-theme="dark"] table {
+      background: #ffffff !important;
+      color: #000000 !important;
+    }
+  }
+</style>
+
+<script>
+(function() {
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    const icon = document.getElementById('themeToggleIcon');
+    if (icon) {
+      if (theme === 'dark') {
+        icon.className = 'fas fa-sun';
+        icon.style.color = '#f59e0b';
+      } else {
+        icon.className = 'fas fa-moon';
+        icon.style.color = '#64748b';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const currentTheme = localStorage.getItem('gezyne_theme') || 'light';
+    applyTheme(currentTheme);
+
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const nextTheme = isDark ? 'light' : 'dark';
+        try {
+          localStorage.setItem('gezyne_theme', nextTheme);
+        } catch(err) {}
+        applyTheme(nextTheme);
+      });
+    }
+  });
+})();
+</script>
+

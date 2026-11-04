@@ -1,0 +1,154 @@
+<!-- Gezyne Universal Barcode Accessioning & Audio-Visual Feedback Engine -->
+<style>
+  .barcode-hud {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    z-index: 10001;
+    background: #0f172a;
+    color: #ffffff;
+    border: 1.5px solid #10b981;
+    border-radius: 30px;
+    padding: 8px 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .barcode-hud.active {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .barcode-hud-code {
+    font-family: var(--font-mono, monospace);
+    color: #34d399;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+</style>
+
+<div id="lis-barcode-hud" class="barcode-hud">
+  <i class="fa-solid fa-barcode" style="color: #10b981; font-size: 1.1rem;"></i>
+  <span>Specimen Accessioned: <span id="lis-barcode-val" class="barcode-hud-code">---</span></span>
+</div>
+
+<script>
+(function() {
+  // 1. Synthesize Clinical Confirmation Audio (Web Audio API - 100% Offline & Dependency-Free)
+  function playScanChime(isSuccess) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (isSuccess !== false) {
+        // High-frequency POS clinical positive accession chime (1800Hz -> 2400Hz)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(2400, ctx.currentTime + 0.07);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.1);
+      } else {
+        // Low-frequency warning buzz (320Hz)
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      }
+    } catch(err) {
+      // Audio autoplay policy fallback
+    }
+  }
+
+  // 2. Display Visual Accessioning HUD
+  let hudTimer = null;
+  function triggerBarcodeHUD(code, isSuccess) {
+    const hud = document.getElementById('lis-barcode-hud');
+    const valEl = document.getElementById('lis-barcode-val');
+    if (!hud || !valEl) return;
+
+    valEl.textContent = code;
+    playScanChime(isSuccess);
+
+    hud.classList.add('active');
+    if (hudTimer) clearTimeout(hudTimer);
+    hudTimer = setTimeout(function() {
+      hud.classList.remove('active');
+    }, 2400);
+  }
+
+  // Expose globally for testing & external scanner integrations
+  window.triggerBarcodeScan = triggerBarcodeHUD;
+
+  // 3. Hardware USB/Bluetooth Barcode Keystroke Burst Interceptor
+  // Standard barcode readers emit keyboard events with inter-character delay < 45ms ending in Enter
+  let barcodeBuffer = '';
+  let lastKeyTime = 0;
+
+  document.addEventListener('keydown', function(e) {
+    // Shortcut: Ctrl+B / Cmd+B -> Test Barcode Scanner Simulation
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      triggerBarcodeHUD('T-' + Math.floor(10000 + Math.random() * 90000), true);
+      return;
+    }
+
+    const currentTime = Date.now();
+    const interval = currentTime - lastKeyTime;
+    lastKeyTime = currentTime;
+
+    // Reset buffer if keystrokes are typed slowly (human typing)
+    if (interval > 60) {
+      barcodeBuffer = '';
+    }
+
+    if (e.key === 'Enter') {
+      if (barcodeBuffer.length >= 3) {
+        // Successful barcode burst detected!
+        e.preventDefault();
+        const scannedCode = barcodeBuffer.trim();
+        barcodeBuffer = '';
+
+        triggerBarcodeHUD(scannedCode, true);
+
+        // Auto-populate active search bar or navigate
+        const activeSearch = document.querySelector('input[name="search"]') || 
+                             document.getElementById('globalHeaderSearch');
+        if (activeSearch) {
+          activeSearch.value = scannedCode;
+          if (activeSearch.form) {
+            activeSearch.form.submit();
+          }
+        }
+      }
+      barcodeBuffer = '';
+      return;
+    }
+
+    // Accumulate printable alphanumeric barcode characters
+    if (e.key.length === 1 && interval <= 60) {
+      barcodeBuffer += e.key;
+    } else if (e.key.length === 1) {
+      barcodeBuffer = e.key;
+    }
+  });
+})();
+</script>

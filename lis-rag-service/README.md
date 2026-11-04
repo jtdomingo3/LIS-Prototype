@@ -6,7 +6,7 @@ It parses and indexes [`docs/USER_MANUAL.md`](../docs/USER_MANUAL.md) into **Chr
 
 ---
 
-## 🛠️ Architecture & Features
+## Architecture & Features
 
 - **Framework:** FastAPI with Uvicorn (asynchronous, high-throughput local HTTP API).
 - **Vector Database:** ChromaDB (embedded, persistent local storage in `data/chroma_db/`, no Docker or external database needed).
@@ -18,7 +18,7 @@ It parses and indexes [`docs/USER_MANUAL.md`](../docs/USER_MANUAL.md) into **Chr
 
 ---
 
-## 🚀 Quick Start & Local Setup Guide
+## Quick Start & Local Setup Guide
 
 ### 1. Open Terminal & Navigate to Directory
 
@@ -63,7 +63,7 @@ pip install -r requirements.txt
 
 ---
 
-## 🏃 Running the Service Locally
+## Running the Service Locally
 
 Start the microservice using Python or Uvicorn:
 
@@ -88,12 +88,12 @@ INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
 
 ---
 
-## 🧪 Testing the Service
+## Testing the Service
 
 ### A. Interactive Swagger UI (Browser)
 
 Open your web browser and navigate to:
-👉 **[http://127.0.0.1:8765/docs](http://127.0.0.1:8765/docs)**
+ **[http://127.0.0.1:8765/docs](http://127.0.0.1:8765/docs)**
 
 This provides an interactive UI where you can test `/rag/query`, `/rag/sync`, and view schema details directly.
 
@@ -273,7 +273,7 @@ curl -X POST "http://127.0.0.1:8765/rag/sync" \
 
 ---
 
-## 📦 Standalone Executable (`rag.exe`)
+## Standalone Executable (`rag.exe`)
 
 For production deployment with the **Windows Tray App**, the service is compiled into a self-contained Windows executable package:
 
@@ -293,7 +293,7 @@ This automatically bundles FastAPI, Uvicorn, ChromaDB, and the ONNX Runtime into
 
 ---
 
-## 🔌 Integration with Fullstack Server & Tray App
+## Integration with Fullstack Server & Tray App
 
 ### How it works with `lis-fullstack`:
 

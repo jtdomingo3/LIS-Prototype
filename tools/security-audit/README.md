@@ -4,7 +4,7 @@ Comprehensive defensive penetration testing, security risk assessment, and compl
 
 ---
 
-## 🛡️ Audited Standards & Baselines
+## Audited Standards & Baselines
 
 1. **OWASP Top 10 (2025/2026 Edition)**
    - A01: Broken Access Control
@@ -22,7 +22,7 @@ Comprehensive defensive penetration testing, security risk assessment, and compl
 
 ---
 
-## 🚀 Running the Security Audit
+## Running the Security Audit
 
 From the repository root or audit directory:
 
@@ -42,7 +42,7 @@ An aggregated report is automatically saved to `tools/security-audit/audit-repor
 
 ---
 
-## ⚡ Zero-Downtime Deployment & High Availability Architecture
+## Zero-Downtime Deployment & High Availability Architecture
 
 Achieving **100% uptime with zero downtime** during server updates, database maintenance, and network interruptions is built into the architecture:
 

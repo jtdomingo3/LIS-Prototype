@@ -120,6 +120,28 @@
             </div>
           </div>
 
+          
+          <h5 style="margin:0 0 10px 0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">Session Security & Inactivity Policy</h5>
+          <div class="field" style="display:flex; justify-content:space-between; align-items:center; gap:16px; background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:20px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:flex-start; gap:12px; flex:1; min-width:260px;">
+              <input type="checkbox" id="autoLogoutEnabled" name="autoLogoutEnabled" <%= (settings && settings.autoLogoutEnabled) ? 'checked' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green); margin-top:2px;" />
+              <div>
+                <label for="autoLogoutEnabled" style="margin:0; font-weight:600; cursor:pointer; color:#0f172a;">Enable Automatic Inactivity Logout</label>
+                <p class="note" style="margin:2px 0 0 0;">Disabled by default. When enabled, idle workstations log out after the set duration to protect Patient Health Information. <strong>Device-specific:</strong> Inactivity on one terminal will never affect other active users on different stations.</p>
+              </div>
+            </div>
+            <div style="display:inline-flex; align-items:center; gap:8px;">
+              <label for="idleTimeoutMinutes" style="font-size:0.85em; font-weight:600; color:#475569; white-space:nowrap;">Inactivity Timeout:</label>
+              <select name="idleTimeoutMinutes" id="idleTimeoutMinutes" style="height:36px; padding:0 10px; border-radius:8px; border:1px solid #cbd5e1; background:#ffffff; font-size:0.85rem; font-weight:600; color:#0f172a; cursor:pointer;">
+                <option value="5" <%= (settings && settings.idleTimeoutMinutes == 5) ? 'selected' : '' %>>5 Minutes</option>
+                <option value="10" <%= (settings && settings.idleTimeoutMinutes == 10) ? 'selected' : '' %>>10 Minutes</option>
+                <option value="15" <%= (!settings || !settings.idleTimeoutMinutes || settings.idleTimeoutMinutes == 15) ? 'selected' : '' %>>15 Minutes (Standard)</option>
+                <option value="30" <%= (settings && settings.idleTimeoutMinutes == 30) ? 'selected' : '' %>>30 Minutes</option>
+                <option value="60" <%= (settings && settings.idleTimeoutMinutes == 60) ? 'selected' : '' %>>1 Hour</option>
+              </select>
+            </div>
+          </div>
+
           <h5 style="margin:0 0 10px 0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">Analyzer Data Integration</h5>
           <div class="field" style="margin:0;">
             <label>Chemistry Analyzer Folder Path</label>

@@ -730,6 +730,8 @@ app.use((req, res, next) => {
     if (global.db && typeof global.db.getSettings === 'function') currentSettings = global.db.getSettings() || {};
     else if (global.db && typeof global.db.read === 'function') currentSettings = (global.db.read() || {}).settings || {};
   } catch (_) {}
+  res.locals.autoLogoutEnabled = Boolean(currentSettings && currentSettings.autoLogoutEnabled);
+  res.locals.idleTimeoutMinutes = parseInt(currentSettings && currentSettings.idleTimeoutMinutes, 10) || 15;
   res.locals.sseConfig = currentSettings.sseConfig || app.locals.sseConfig || {
     enabled: true,
     autoRefreshByDefault: false,

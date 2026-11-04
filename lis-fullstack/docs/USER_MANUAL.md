@@ -11,23 +11,23 @@ All major sections of the system are accessible from the navigation sidebar on t
 
 | Sidebar Menu Item | Primary Purpose | Who Uses It |
 | :--- | :--- | :--- |
-| **📊 Dashboard** | Overview of daily patient volume, pending tests, revenue summaries, and alerts | Managers, Admins |
-| **👥 Patients** | Patient master registry, historical records, and patient profiles | Receptionists, MedTechs |
-| **🏥 Reception** | Registering walk-ins, assigning tests, station queueing, and TV kiosk display | Receptionists, Cashiers |
-| **🩺 PhilHealth / Health Card** | PhilHealth Konsulta claims, HMO provider enrollments, LOA approval, Statement of Account (SOA), transmittals | Receptionists, Claims Officers, Cashiers |
-| **🧪 Tests & Results** | Entering test results, importing analyzer data, ultrasound entry, and batch worksheets | Medical Technologists |
-| **📋 Reports** | Previewing, printing, and issuing official diagnostic PDF reports | MedTechs, Pathologists |
-| **📦 Inventory** | Tracking reagent stocks, supplies, stock-in, stock-out, and expiry alerts | MedTechs, Supply Officers |
-| **🔬 Equipment & QC** | Instrument logs, daily Quality Control entries, Levey-Jennings charts, and NEQAS | MedTechs, QC Officers |
-| **✍️ Signature** | Drawing or uploading official digital signatures for report stamping | Doctors, MedTechs, Pathologists |
-| **📊 Worksheet** | Generating and exporting daily laboratory worksheets to Excel/PDF | Medical Technologists |
-| **📄 Templates** | Managing diagnostic report formats and normal reference ranges | Admins, Section Heads |
-| **👤 Users** | Staff user accounts and role permissions management | Administrators |
-| **⚙️ Settings** | Clinic letterhead, thermal printer setup, and AI configuration | Administrators |
-| **🤖 GezyneBot AI** | Resident AI assistant for software guidance, Westgard rules, and clinical queries | All Staff Members |
-| **💰 Costing & P&L** | Unit test costing, reagent purchase mapping, expense tracking, and income | Lab Owners, Managers |
-| **👥 HR & Payroll** | Staff directory, daily biometric/manual DTR, leave approvals, and payroll | HR, Management, Staff |
-| **📖 User Manual** | Interactive in-app guide and how-to instructions | All Users |
+| **Dashboard** | Overview of daily patient volume, pending tests, revenue summaries, and alerts | Managers, Admins |
+| **Patients** | Patient master registry, historical records, and patient profiles | Receptionists, MedTechs |
+| **Reception** | Registering walk-ins, assigning tests, station queueing, and TV kiosk display | Receptionists, Cashiers |
+| **PhilHealth / Health Card** | PhilHealth Konsulta claims, HMO provider enrollments, LOA approval, Statement of Account (SOA), transmittals | Receptionists, Claims Officers, Cashiers |
+| **Tests & Results** | Entering test results, importing analyzer data, ultrasound entry, and batch worksheets | Medical Technologists |
+| **Reports** | Previewing, printing, and issuing official diagnostic PDF reports | MedTechs, Pathologists |
+| **Inventory** | Tracking reagent stocks, supplies, stock-in, stock-out, and expiry alerts | MedTechs, Supply Officers |
+| **Equipment & QC** | Instrument logs, daily Quality Control entries, Levey-Jennings charts, and NEQAS | MedTechs, QC Officers |
+| **Signature** | Drawing or uploading official digital signatures for report stamping | Doctors, MedTechs, Pathologists |
+| **Worksheet** | Generating and exporting daily laboratory worksheets to Excel/PDF | Medical Technologists |
+| **Templates** | Managing diagnostic report formats and normal reference ranges | Admins, Section Heads |
+| **Users** | Staff user accounts and role permissions management | Administrators |
+| **Settings** | Clinic letterhead, thermal printer setup, and AI configuration | Administrators |
+| **GezyneBot AI** | Resident AI assistant for software guidance, Westgard rules, and clinical queries | All Staff Members |
+| **Costing & P&L** | Unit test costing, reagent purchase mapping, expense tracking, and income | Lab Owners, Managers |
+| **HR & Payroll** | Staff directory, daily biometric/manual DTR, leave approvals, and payroll | HR, Management, Staff |
+| **User Manual** | Interactive in-app guide and how-to instructions | All Users |
 
 ---
 

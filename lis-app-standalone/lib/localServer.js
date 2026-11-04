@@ -370,6 +370,13 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     res.locals.error = req.flash('error');
     const sessionUser = req.session && req.session.user ? req.session.user : null;
     res.locals.user = sessionUser;
+    let currentSettings = {};
+    try {
+      if (global.db && typeof global.db.getSettings === 'function') currentSettings = global.db.getSettings() || {};
+      else if (global.db && typeof global.db.read === 'function') currentSettings = (global.db.read() || {}).settings || {};
+    } catch (_) {}
+    res.locals.autoLogoutEnabled = Boolean(currentSettings && currentSettings.autoLogoutEnabled);
+    res.locals.idleTimeoutMinutes = parseInt(currentSettings && currentSettings.idleTimeoutMinutes, 10) || 15;
     // layout.ejs checks `sessionUser` for the sidebar navigation
     res.locals.sessionUser = sessionUser;
     // Offline indicator for views

@@ -60,9 +60,14 @@
 
 <script>
 (function() {
-  // Configurable thresholds (default: 15 minutes idle, 60 seconds countdown)
+  // Guard: Disabled by default
+  const isEnabled = <%= (typeof autoLogoutEnabled !== 'undefined' ? Boolean(autoLogoutEnabled) : false) %>;
+  if (!isEnabled) return;
+
+  const idleMinutes = <%= (typeof idleTimeoutMinutes !== 'undefined' ? Number(idleTimeoutMinutes) : 15) %>;
+  // Configurable thresholds
   const config = window.__IDLE_WARNING_CONFIG__ || {
-    idleTimeoutMs: 15 * 60 * 1000,
+    idleTimeoutMs: Math.max(1, idleMinutes) * 60 * 1000,
     countdownSeconds: 60,
     pingEndpoint: '/api/auth/ping',
     logoutEndpoint: '/logout'
