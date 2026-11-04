@@ -1,0 +1,154 @@
+<!-- Laboratory Bench Keyboard Shortcuts (MedTech Rapid Entry Engine) -->
+<style>
+  .bench-kbd-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    z-index: 9998;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 24px;
+    padding: 7px 16px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #334155;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
+    opacity: 0.95;
+  }
+  .bench-kbd-hint:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  }
+  .bench-kbd-hint kbd {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-bottom: 2px solid #94a3b8;
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono, monospace);
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .bench-kbd-hint .kbd-sep {
+    color: #94a3b8;
+    font-size: 0.8rem;
+  }
+  .bench-kbd-saving {
+    background: #ecfdf5 !important;
+    border-color: #10b981 !important;
+    color: #065f46 !important;
+  }
+  @media (max-width: 768px) {
+    .bench-kbd-hint {
+      display: none; /* Hide keyboard legend on mobile touchscreens */
+    }
+  }
+</style>
+
+<script>
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. Detect if current page is a Diagnostic Results Entry Bench
+    const resultsForm = document.querySelector('form[action*="/results"]') || 
+                        document.querySelector('form#bloodChemForm') ||
+                        document.querySelector('form[action*="/tests/"][action*="/edit"]');
+    
+    if (!resultsForm) return;
+
+    // 2. Mount Keyboard Shortcut Indicator Badge
+    const badge = document.createElement('div');
+    badge.id = 'lis-bench-kbd-hint';
+    badge.className = 'bench-kbd-hint';
+    badge.innerHTML = `
+      <i class="fa-solid fa-keyboard" style="color:#0284c7;"></i>
+      <span><kbd>Ctrl+S</kbd> Save Results</span>
+      <span class="kbd-sep">&bull;</span>
+      <span><kbd>Enter</kbd> Next Field</span>
+      <span class="kbd-sep">&bull;</span>
+      <span><kbd>Shift+Enter</kbd> Prev</span>
+    `;
+    document.body.appendChild(badge);
+
+    // 3. Global Keydown Listener for MedTech Rapid Shortcuts
+    document.addEventListener('keydown', function(e) {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+
+      // Shortcut: Ctrl+S / Cmd+S -> Save Results directly
+      if (isCtrlOrCmd && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        const submitBtn = resultsForm.querySelector('button[type="submit"]') || 
+                          resultsForm.querySelector('input[type="submit"]');
+        if (submitBtn && !submitBtn.disabled) {
+          badge.classList.add('bench-kbd-saving');
+          badge.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="color:#059669;"></i> Saving Results...';
+          submitBtn.click();
+        }
+        return;
+      }
+
+      // Shortcut: Enter key inside inputs -> Auto-advance to next parameter field
+      if (e.key === 'Enter') {
+        const target = e.target;
+        // Do not intercept Enter on multiline textareas or buttons
+        if (!target || target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON' || target.type === 'submit' || target.type === 'button') {
+          return;
+        }
+
+        // Only handle inputs inside the active results form
+        if (resultsForm.contains(target) && (target.tagName === 'INPUT' || target.tagName === 'SELECT')) {
+          e.preventDefault();
+          
+          // Collect visible, non-disabled, non-readonly result fields
+          const inputs = Array.from(resultsForm.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([disabled]):not([readonly]), select:not([disabled])'))
+            .filter(el => {
+              const style = window.getComputedStyle(el);
+              return style.display !== 'none' && style.visibility !== 'hidden';
+            });
+
+          const currentIndex = inputs.indexOf(target);
+          if (currentIndex !== -1) {
+            if (e.shiftKey) {
+              // Shift + Enter: Move backward to previous parameter
+              if (currentIndex > 0) {
+                const prevInput = inputs[currentIndex - 1];
+                prevInput.focus();
+                if (typeof prevInput.select === 'function') prevInput.select();
+              }
+            } else {
+              // Enter: Advance forward to next parameter
+              if (currentIndex < inputs.length - 1) {
+                const nextInput = inputs[currentIndex + 1];
+                nextInput.focus();
+                if (typeof nextInput.select === 'function') nextInput.select();
+              } else {
+                // Final field reached: Focus Save button
+                const submitBtn = resultsForm.querySelector('button[type="submit"]');
+                if (submitBtn) submitBtn.focus();
+              }
+            }
+          }
+        }
+      }
+
+      // Shortcut: Escape key -> Close any active modal
+      if (e.key === 'Escape') {
+        const activeBackdrop = document.querySelector('.clinical-modal-backdrop.active') ||
+                               document.querySelector('.modal-overlay:not([style*="display: none"]):not([style*="display:none"])');
+        if (activeBackdrop) {
+          const closeBtn = activeBackdrop.querySelector('.clinical-modal-close') || 
+                           activeBackdrop.querySelector('.modal-close');
+          if (closeBtn) closeBtn.click();
+        }
+      }
+    });
+  });
+})();
+</script>
+

@@ -1268,6 +1268,69 @@
             cursor: pointer;
             accent-color: var(--secondary-green);
         }
+        /* ==========================================================================
+           Healthcare Tablet & Glove-Friendly Bedside Phlebotomy Breakpoints
+           ========================================================================== */
+        @media (max-width: 1024px) {
+            /* Touch-Friendly Action Targets (Glove-Safe min-height) */
+            .button, .btn, .btn-primary, .btn-secondary, .btn-blue, .btn-orange {
+                min-height: 42px;
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+            .btn-small {
+                min-height: 38px;
+                padding: 6px 14px;
+                font-size: 0.84rem;
+            }
+            /* Fluid Table Touch Scrolling with Momentum */
+            .table-responsive {
+                -webkit-overflow-scrolling: touch;
+                overflow-x: auto;
+                position: relative;
+            }
+            /* Dual-Row Filter Bar Wrap on Tablets */
+            form[method="GET"] {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            form[method="GET"] input[type="text"] {
+                min-width: 180px;
+            }
+            /* Phlebotomy / Reception Tile Fluidity */
+            .reception-area-tile {
+                padding: 16px !important;
+                min-height: 150px !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* WCAG 2.5.5 / ISO Healthcare Touch Standards (44px target) */
+            .button, .btn, .btn-primary, .btn-secondary, .btn-blue, .btn-orange {
+                min-height: 44px;
+                font-size: 0.88rem;
+            }
+            .main-content {
+                padding: 14px 14px 60px 14px;
+            }
+            .header {
+                padding: 10px 14px;
+                margin-bottom: 16px;
+            }
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px !important;
+            }
+            .stat-card {
+                padding: 14px !important;
+            }
+            .action-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                justify-content: flex-end;
+            }
+        }
     </style>
     
     <!-- Styles injected from individual views (via express-ejs-layouts extractStyles) -->
@@ -2825,5 +2888,7 @@
     <% if (!isDocumentOrPrintPage && typeof user !== 'undefined' && user) { %>
       <%- include('partials/idle-warning-modal') %>
     <% } %>
+    <!-- Laboratory Bench Rapid Keyboard Shortcuts (Active for diagnostic results entry) -->
+    <%- include('partials/bench-shortcuts') %>
 </body>
 </html>
