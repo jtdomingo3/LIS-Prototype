@@ -1,13 +1,15 @@
-# Gezyne LIS - Complete Server API Postman Collection
+# Gezyne LIS - Server REST API Collections
 
-This directory contains the production API test collection and environment configuration for the **Gezyne Laboratory Information System (LIS)** server application.
+This directory contains standardized API request collections and environment schemas for testing, verifying, and integrating with the **Gezyne Laboratory Information System (LIS)** server application.
+
+The collections are formatted using the open **v2.1.0 collection specification**, making them compatible with any standard REST client or automated runner (VS Code REST Client, Insomnia, Thunder Client, Postman, Bruno, curl, or CLI test runners).
 
 ---
 
 ## 📁 Included Files
 
-1. **`gezyne_lis_api_collection.json`**: Complete Postman Collection (v2.1.0 schema) featuring **72 endpoints** across all 18 clinical, analytical, financial, and administrative modules:
-   - **1. Authentication & Security**: JWT token issuance, verification, session touch/keepalive, CSRF forms, and logout.
+1. **`api_collection.json`**: Complete API collection featuring **72 endpoints** across all 18 clinical, analytical, financial, and administrative modules:
+   - **1. Authentication & Security**: JWT token issuance, verification, session keepalive ping, CSRF forms, and logout.
    - **2. Dashboard & Analytics**: Real-time KPI statistics and mobile/kiosk summary metrics.
    - **3. Patients Registry & Auto-MRN**: Demographic records, auto-MRN generation, and live autocomplete searches.
    - **4. Reception & 10-Station Queue**: Patient check-in, station stage completion, and rollback/undo across all 10 clinical stations.
@@ -26,7 +28,7 @@ This directory contains the production API test collection and environment confi
    - **17. GezyneBot Clinical AI Assistant**: Embedded RAG vector search, diagnostic manual queries, and clinical Q&A.
    - **18. Offline Standalone Synchronization**: Standalone client state hydration and bulk mutation replay queue (`/api/sync`).
 
-2. **`gezyne_lis_environment.json`**: Pre-configured environment variables:
+2. **`environment.json`**: Pre-configured environment variables:
    - `baseUrl`: Default `http://127.0.0.1:3000`
    - `authToken`: Automatically populated via test script when running `POST /api/auth/token`
    - `adminEmail`: Configurable test email
@@ -35,28 +37,23 @@ This directory contains the production API test collection and environment confi
 
 ---
 
-## 🚀 How to Import and Run in Postman
+## 🚀 How to Import and Use
 
-1. Open **Postman**.
-2. Click **Import** (top left).
-3. Drag and drop both:
-   - `gezyne_lis_api_collection.json`
-   - `gezyne_lis_environment.json`
-4. In the top-right environment dropdown, select **"Gezyne LIS Local Environment"**.
+### In any GUI REST Client (Insomnia, Postman, Bruno, Thunder Client)
+1. Open your REST client.
+2. Click **Import** or **Open Collection**.
+3. Select both:
+   - `collections/api_collection.json`
+   - `collections/environment.json`
+4. Select the imported environment (`Gezyne LIS Local Environment`).
 5. Run **"1. Authentication & Security > Get JWT Auth Token"**:
-   - The embedded test script will automatically store the returned Bearer token into `{{authToken}}`.
-   - All subsequent requests in the collection will inherit this token automatically!
+   - The embedded script captures the returned Bearer token into `{{authToken}}`.
+   - All subsequent endpoint calls in the collection inherit this token automatically.
 
----
-
-## ⚡ Running via Newman CLI (Automated Terminal Testing)
-
-You can run the entire test suite directly from your terminal or CI/CD pipeline using [Newman](https://www.npmjs.com/package/newman):
+### Automated Terminal / CI/CD Execution
+You can run the entire collection headlessly from your terminal:
 
 ```bash
-# Install Newman globally (if not already installed)
-npm install -g newman
-
-# Execute the collection against your running server
-newman run postman/gezyne_lis_api_collection.json -e postman/gezyne_lis_environment.json
+# Using Newman CLI
+npx newman run collections/api_collection.json -e collections/environment.json
 ```

@@ -59,3 +59,4 @@ console.log('  ✓ Display formulas ($$ and \\[ \\]) correctly formatted');
 console.log('  ✓ Inline formulas ($...$ and \\( \\)) rendered to KaTeX HTML');
 console.log('  ✓ Single dollar currency notation ($50) preserved untouched');
 console.log('🎉 KaTeX Math Rendering Test Passed (100%)!\n');
+
