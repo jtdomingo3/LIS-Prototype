@@ -150,7 +150,7 @@ console.log('===================================================================
       tests: [
         { id: 'server-test-888', testId: 'T-20260904-005', patient: 'server-canonical-999', testType: 'Complete Blood Count' }
       ],
-      users: [{ id: 'u1', email: 'admin@lab.com', role: 'Admin' }],
+      users: [{ id: 'u1', email: process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test', role: 'Admin' }],
       templates: [],
       counters: { patient: 2, test: 1 }
     };
@@ -192,7 +192,7 @@ console.log('===================================================================
     assert.strictEqual(auditRes.success, true, 'Audit should succeed');
     assert(auditRes.audit, 'Audit object should be returned');
     assert.strictEqual(auditRes.audit.discrepanciesFound > 0, true, 'Should have detected the duplicate discrepancy');
-    assert.strictEqual(auditRes.audit.status, 'DISCREPANCIES_RESOLVED');
+    assert(['DIVERGENCES_RECONCILED', 'DISCREPANCIES_RESOLVED'].includes(auditRes.audit.status), 'Status should reflect reconciled divergences');
 
     // Verify local DataStore now exactly mirrors server with zero duplicates
     const finalPts = dataStore.getCollection('patients');

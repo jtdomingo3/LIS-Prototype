@@ -16,9 +16,13 @@ async function run() {
   const config = { SERVER_URL: 'http://127.0.0.1:3000', MAX_SYNC_RETRIES: 3 };
   const engine = new SyncEngine(queue, config, ds);
 
-  // Set credentials for server authentication
-  engine.setCredentials('admin@lab.com', 'admin123');
-  engine.setAutoLoginEmail('admin@lab.com');
+  // Set credentials for server authentication if provided in environment
+  const email = process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test';
+  const pass = process.env.TEST_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+  if (pass) {
+    engine.setCredentials(email, pass);
+  }
+  engine.setAutoLoginEmail(email);
 
   const ts = Date.now().toString().slice(-4);
   const patId = 'pat-' + Date.now();

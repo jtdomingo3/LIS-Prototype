@@ -49,14 +49,14 @@ async function runLiveServerSyncTest() {
   console.log('2. Initializing standalone SyncEngine and OperationQueue...');
   const userDataPath = process.env.APPDATA ? path.join(process.env.APPDATA, 'lis-app-standalone') : path.join(__dirname, '..', 'lis-app-standalone');
   const ds = new DataStore(userDataPath);
-  const queue = new OperationQueue(path.join(userDataPath, 'queue.json'));
-  const engine = new SyncEngine(ds, queue, SERVER_URL);
+  const queue = new OperationQueue(userDataPath);
+  const engine = new SyncEngine(queue, { SERVER_URL }, ds);
 
   const pendingCount = queue.countPending();
   console.log(`   ✓ Found ${pendingCount} pending offline operations waiting to sync.`);
 
   console.log('\n3. Replaying offline operation queue to server...');
-  const replayResult = await engine.replayQueue();
+  const replayResult = await engine.processQueue();
   console.log('   ✓ Queue Replay Result:', JSON.stringify(replayResult));
 
   console.log('\n4. Performing Full Bidirectional Sync...');

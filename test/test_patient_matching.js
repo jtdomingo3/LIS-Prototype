@@ -1,10 +1,10 @@
 // Test script to verify patient matching logic
 const https = require('https');
 const http = require('http');
-
-// Login first
-const testAdminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
-const testAdminPassword = process.env.TEST_ADMIN_PASSWORD || '';
+const { getTestCredentials } = require('./test-auth-config');
+const creds = getTestCredentials();
+const testAdminEmail = creds.email;
+const testAdminPassword = creds.password;
 const loginData = JSON.stringify({
   email: testAdminEmail,
   password: testAdminPassword

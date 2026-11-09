@@ -58,9 +58,13 @@ async function runLiveServerSyncE2E() {
   const config = { SERVER_URL, MAX_SYNC_RETRIES: 3 };
   const engine = new SyncEngine(queue, config, ds);
 
-  // Set default admin credentials for auto-auth if available
-  engine.setCredentials('admin@example.com', 'admin123');
-  engine.setAutoLoginEmail('admin@example.com');
+  // Set test credentials for auto-auth if available via environment / .env
+  const { getTestCredentials } = require('./test-auth-config');
+  const creds = getTestCredentials();
+  if (creds.password) {
+    engine.setCredentials(creds.email || 'admin@example.com', creds.password);
+  }
+  engine.setAutoLoginEmail(creds.email || 'admin@example.com');
 
   global.db = {
     getPatients: () => ds.getCollection('patients'),

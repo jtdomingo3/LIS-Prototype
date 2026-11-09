@@ -100,7 +100,20 @@ async function runTests() {
 
     // 1. Login or simulate session user
     // The admin user from users table
-    const users = dataStore.getCollection('users') || [];
+    let users = dataStore.getCollection('users') || [];
+    if (users.length === 0) {
+      const defaultAdmin = {
+        id: 'admin-standalone-test-fixture',
+        name: 'Automated Test Runner',
+        email: 'test-equipment-runner@local.test',
+        role: 'Admin',
+        permissions: { dashboard: true, equipment: true, inventory: true }
+      };
+      if (dataStore.db && dataStore.db.upsertUser) {
+        dataStore.db.upsertUser(defaultAdmin);
+      }
+      users = [defaultAdmin];
+    }
     console.log('Available users count:', users.length);
     const admin = users.find(u => u.role === 'Admin') || users[0];
     console.log('Using test admin account:', admin ? admin.email : 'None');

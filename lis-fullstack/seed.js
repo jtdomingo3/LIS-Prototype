@@ -16,14 +16,15 @@ function writeUsers(users) {
 async function seedAdminOnly() {
   try {
     const existing = readUsers() || [];
-    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const defaultEmail = process.env.ADMIN_EMAIL || process.env.DEFAULT_ADMIN_EMAIL || 'admin@lab.com';
+    let admin = existing.find(u => u.email === defaultEmail || u.role === 'Admin');
     // Pre-hashed default administrator credential (cost factor 12)
     const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
     if (!admin) {
       admin = {
         id: uuidv4(),
         name: 'Admin User',
-        email: 'admin@lab.com',
+        email: defaultEmail,
         password: hash,
         role: 'Admin',
         status: 'Active',
@@ -31,7 +32,7 @@ async function seedAdminOnly() {
         lastLogin: null
       };
       writeUsers([admin]);
-      console.log('Created admin user in data-users.json');
+      console.log(`Created admin user (${defaultEmail}) in data-users.json`);
     } else {
       // ensure password is hashed and remove any other users
       if (!admin.password || !admin.password.startsWith('$2a$')) {

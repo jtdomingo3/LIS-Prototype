@@ -66,7 +66,7 @@ class SyncEngine {
    */
   _getAutoLoginHash() {
     try {
-      const email = this._autoLoginEmail || (this._credentials && this._credentials.email) || 'admin@lab.com';
+      const email = this._autoLoginEmail || (this._credentials && this._credentials.email) || process.env.ADMIN_EMAIL || process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
       let users = [];
       if (this.dataStore && typeof this.dataStore.getCollection === 'function') {
         users = this.dataStore.getCollection('users') || [];

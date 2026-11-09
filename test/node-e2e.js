@@ -9,8 +9,8 @@ async function testFlow(port, isFullstack, credentials) {
     let csrfToken = '';
 
     // 1. GET /login to get cookie and CSRF
-    const res1 = await new Promise((resolve) => {
-      http.get(`http://127.0.0.1:${port}/login`, (res) => {
+    const res1 = await new Promise((resolve, reject) => {
+      const req = http.get(`http://127.0.0.1:${port}/login`, (res) => {
         let cookies = res.headers['set-cookie'];
         if (Array.isArray(cookies)) {
           sessionCookie = cookies[0].split(';')[0];
@@ -18,6 +18,9 @@ async function testFlow(port, isFullstack, credentials) {
         let data = '';
         res.on('data', c => data += c);
         res.on('end', () => resolve({ status: res.statusCode, data }));
+      });
+      req.on('error', (err) => {
+        reject(new Error(`Could not connect to port ${port}: ${err.message}`));
       });
     });
 

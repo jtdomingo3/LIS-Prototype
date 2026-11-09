@@ -1,7 +1,9 @@
 // Test patient matching for ROMEO FELICIA test
 const base = 'http://localhost:3000';
-const testAdminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
-const testAdminPassword = process.env.TEST_ADMIN_PASSWORD || '';
+const { getTestCredentials } = require('./test-auth-config');
+const creds = getTestCredentials();
+const testAdminEmail = creds.email;
+const testAdminPassword = creds.password;
 
 (async () => {
   // login

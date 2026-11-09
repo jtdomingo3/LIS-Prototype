@@ -23,11 +23,13 @@ async function run() {
 
   console.log('Finding admin...');
   try {
-    const user = await User.findOne({ email: 'admin@lab.com' });
+    const adminEmail = process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@lab.com';
+    const user = await User.findOne({ email: adminEmail });
     console.log('Found user:', user ? user.email : null);
     if (user) {
       console.log('Comparing password...');
-      const isMatch = await user.comparePassword('admin123'); // assuming default pass is something
+      const pass = process.env.TEST_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '';
+      const isMatch = pass ? await user.comparePassword(pass) : false;
       console.log('Match:', isMatch);
     }
   } catch (e) {

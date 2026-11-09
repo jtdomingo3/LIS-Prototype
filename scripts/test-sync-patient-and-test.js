@@ -51,7 +51,8 @@ async function testSyncPatientAndTest() {
   // If there are pending operations, let's test replaying them!
   if (pending.length > 0) {
     console.log('\nReplaying pending operations through SyncEngine...');
-    engine.setAutoLoginEmail('admin@lab.com');
+    const adminEmail = process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test';
+    engine.setAutoLoginEmail(adminEmail);
     const synced = await engine.processQueue();
     console.log(`Replay finished. Operations synced: ${synced}`);
   }

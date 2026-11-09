@@ -43,8 +43,10 @@ async function runLiveSyncTests() {
   try {
     // 2. Initial Full Download (Pull from Central Server)
     console.log('\n2. Testing Background Full Database Download (Pull)...');
-    const testAdminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
-    const testAdminPassword = process.env.TEST_ADMIN_PASSWORD || process.env.DEFAULT_ADMIN_PASSWORD;
+    const { getTestCredentials } = require('./test-auth-config');
+    const creds = getTestCredentials();
+    const testAdminEmail = creds.email;
+    const testAdminPassword = creds.password;
     if (testAdminPassword) {
       engine.setCredentials(testAdminEmail, testAdminPassword);
     } else {

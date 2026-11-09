@@ -34,11 +34,11 @@ async function run() {
   const baseUrl = 'http://localhost:3000';
   const cookieHeader = 'connect.sid=s%3Atest.sig;'; // or login
 
-  // Authenticate as admin via signed Bearer token or optional env password
+  // Authenticate as admin via cryptographically signed Bearer token (no plain text passwords)
   const { generateToken } = require('../lis-fullstack/lib/tokenHelper');
   const token = generateToken({
-    id: 'admin-test',
-    email: process.env.TEST_ADMIN_EMAIL || 'admin@lab.com',
+    id: 'test-admin-suite-runner',
+    email: process.env.TEST_ADMIN_EMAIL || 'test-admin@local.test',
     role: 'Admin',
     permissions: { dashboard: true, equipment: true, inventory: true }
   });
@@ -48,20 +48,6 @@ async function run() {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
   };
-
-  if (process.env.TEST_ADMIN_PASSWORD) {
-    const loginRes = await request({
-      hostname: 'localhost',
-      port: 3000,
-      path: '/login',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    }, `email=${encodeURIComponent(process.env.TEST_ADMIN_EMAIL || 'admin@lab.com')}&password=${encodeURIComponent(process.env.TEST_ADMIN_PASSWORD)}`);
-    const rawCookies = loginRes.headers['set-cookie'];
-    if (rawCookies && rawCookies[0]) {
-      authHeaders['Cookie'] = rawCookies[0].split(';')[0];
-    }
-  }
 
   // Test 1: GET /equipment/neqas/nrl-list
   console.log('\n[Test 1] GET /equipment/neqas/nrl-list');

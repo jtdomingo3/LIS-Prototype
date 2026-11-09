@@ -139,15 +139,16 @@ async function processMaintenanceFlags() {
   if (fs.existsSync(restoreAdminFlag)) {
     try {
       const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
+      const defaultAdminEmail = process.env.ADMIN_EMAIL || process.env.DEFAULT_ADMIN_EMAIL || 'admin@lab.com';
       let existing = [];
       try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
-      let admin = existing.find(u => u.email === 'admin@lab.com');
+      let admin = existing.find(u => u.email === defaultAdminEmail || u.email === 'admin@lab.com');
       if (!admin) {
         const { v4: uuidv4 } = require('uuid');
         admin = {
           id: uuidv4(),
           name: 'Admin User',
-          email: 'admin@lab.com',
+          email: defaultAdminEmail,
           password: hash,
           role: 'Admin',
           status: 'Active',
@@ -178,7 +179,7 @@ async function processMaintenanceFlags() {
       db.saveUsers(existing);
       if (typeof db.checkpoint === 'function') db.checkpoint();
       try { fs.writeFileSync(USERS_FILE, JSON.stringify(existing, null, 2), 'utf8'); } catch (_) {}
-      console.log('[server] Maintenance: Restored default admin user (admin@lab.com)');
+      console.log(`[server] Maintenance: Restored default admin user (${defaultAdminEmail})`);
       try { fs.unlinkSync(restoreAdminFlag); } catch (_) {}
     } catch (e) {
       console.error('[server] Maintenance error restoring admin user:', e);
@@ -202,11 +203,12 @@ async function processMaintenanceFlags() {
 
       // Re-seed default admin user
       const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
+      const defaultAdminEmail = process.env.ADMIN_EMAIL || process.env.DEFAULT_ADMIN_EMAIL || 'admin@lab.com';
       const { v4: uuidv4 } = require('uuid');
       const defaultAdmin = {
         id: uuidv4(),
         name: 'Admin User',
-        email: 'admin@lab.com',
+        email: defaultAdminEmail,
         password: hash,
         role: 'Admin',
         status: 'Active',
@@ -329,11 +331,12 @@ async function processMaintenanceFlags() {
   try {
     const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
     if (existingUsers.length === 0) {
+      const defaultAdminEmail = process.env.ADMIN_EMAIL || process.env.DEFAULT_ADMIN_EMAIL || 'admin@lab.com';
       const { v4: uuidv4 } = require('uuid');
       const defaultAdmin = {
         id: uuidv4(),
         name: 'Admin User',
-        email: 'admin@lab.com',
+        email: defaultAdminEmail,
         // Pre-hashed default administrator credential (cost factor 12)
         password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G',
         role: 'Admin',
@@ -346,7 +349,7 @@ async function processMaintenanceFlags() {
       if (typeof db.checkpoint === 'function') {
         db.checkpoint();
       }
-      console.log('[server] Seeded default admin user (admin@lab.com) into empty SQLite database');
+      console.log(`[server] Seeded default admin user (${defaultAdminEmail}) into empty SQLite database`);
     }
   } catch (e) {
     console.error('[server] Failed to seed default admin user:', e);
@@ -1160,7 +1163,8 @@ app.post('/api/restore/users', async (req, res) => {
       }
     }
 
-    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const defaultAdminEmail = process.env.ADMIN_EMAIL || process.env.DEFAULT_ADMIN_EMAIL || 'admin@lab.com';
+    let admin = existing.find(u => u.email === defaultAdminEmail || u.email === 'admin@lab.com');
     // Pre-hashed default administrator credential (cost factor 12)
     const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
 
@@ -1168,7 +1172,7 @@ app.post('/api/restore/users', async (req, res) => {
       admin = {
         id: uuidRestore(),
         name: 'Admin User',
-        email: 'admin@lab.com',
+        email: defaultAdminEmail,
         password: hash,
         role: 'Admin',
         licenseNumber: null,

@@ -24,8 +24,8 @@ async function run() {
   console.log('=== TESTING USER EQUIPMENT & QC MODULE PERMISSION ===');
 
   const adminToken = generateToken({
-    id: 'test-admin',
-    email: 'admin@lab.com',
+    id: 'test-admin-fixture',
+    email: 'test-admin@local.test',
     role: 'Admin',
     permissions: { dashboard: true, users: true, equipment: true }
   });

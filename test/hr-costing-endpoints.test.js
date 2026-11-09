@@ -694,7 +694,7 @@ console.log('\n--- 8. Live HTTP Router & Communication Integration Tests ---');
       user: {
         id: 'admin-test-01',
         name: 'Admin User',
-        email: 'admin@lab.com',
+        email: process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test',
         role: 'Admin',
         permissions: { hr: true, costing: true }
       }

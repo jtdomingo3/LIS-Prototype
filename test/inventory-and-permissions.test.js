@@ -257,7 +257,8 @@ function testInventoryAccessHelper(user) {
 }
 
 test('Admin should always have full inventory access regardless of permissions object', () => {
-  const adminUser = { role: 'Admin', email: 'admin@lab.com', permissions: {} };
+  const adminEmail = process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test';
+  const adminUser = { role: 'Admin', email: adminEmail, permissions: {} };
   assert.strictEqual(testInventoryAccessHelper(adminUser), true);
 });
 

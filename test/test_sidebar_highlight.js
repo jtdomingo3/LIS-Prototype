@@ -5,10 +5,12 @@ const assert = require('assert');
 ['./lis-fullstack/views/layout.ejs', './lis-app-standalone/views/layout.ejs'].forEach(layoutPath => {
   const content = fs.readFileSync(layoutPath, 'utf8');
   
+  const testEmail = process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test';
+
   // Test with title = 'System User Manual'
   const htmlManual = ejs.render(content, {
     title: 'System User Manual',
-    sessionUser: { role: 'Admin', name: 'Admin User', email: 'admin@lab.com' },
+    sessionUser: { role: 'Admin', name: 'Admin User', email: testEmail },
     perms: { users: true },
     featureFlags: { users: true },
     body: '<div>Content</div>',
@@ -30,7 +32,7 @@ const assert = require('assert');
   // Test with title = 'User Management'
   const htmlUsers = ejs.render(content, {
     title: 'User Management',
-    sessionUser: { role: 'Admin', name: 'Admin User', email: 'admin@lab.com' },
+    sessionUser: { role: 'Admin', name: 'Admin User', email: testEmail },
     perms: { users: true },
     featureFlags: { users: true },
     body: '<div>Content</div>',

@@ -222,8 +222,10 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         return next();
       }
       if (_autoLoginEmail && req.session && !req.session.user) {
-        const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
-        const user = users.find(u => u.email && u.email.toLowerCase() === _autoLoginEmail.toLowerCase());
+        const users = (global.db && global.db.getUsers)
+          ? global.db.getUsers()
+          : (dataStore && typeof dataStore.getCollection === 'function' ? dataStore.getCollection('users') : []);
+        const user = users.find(u => u && u.email && u.email.toLowerCase() === _autoLoginEmail.toLowerCase());
         if (user) {
           req.session.user = {
             id: user.id || user.email,

@@ -56,7 +56,7 @@ function getTestCredentials() {
     }
   }
 
-  const email = cliEmail || process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@lab.com';
+  const email = cliEmail || process.env.TEST_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'test-admin@local.test';
   const password = cliPassword || process.env.TEST_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
 
   if (!password) {

@@ -1283,7 +1283,8 @@ ipcMain.handle('restore-users', async () => {
     } catch (e) { existing = []; }
 
     // check if admin already exists
-    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const defaultAdminEmail = process.env.ADMIN_EMAIL || process.env.DEFAULT_ADMIN_EMAIL || 'admin@lab.com';
+    let admin = existing.find(u => u.email === defaultAdminEmail || u.email === 'admin@lab.com');
     // Pre-hashed default administrator credential (cost factor 12)
     const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
 
@@ -1291,7 +1292,7 @@ ipcMain.handle('restore-users', async () => {
       admin = {
         id: uuidv4(),
         name: 'Admin User',
-        email: 'admin@lab.com',
+        email: defaultAdminEmail,
         password: hash,
         role: 'Admin',
         licenseNumber: null,
