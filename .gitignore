@@ -35,6 +35,14 @@ lis-angular/backend/assets
 *.test.db-journal
 *.test.db-wal
 *.test.db-shm
+*.db-shm
+*.db-wal
+**/*.db-shm
+**/*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+**/*.sqlite-shm
+**/*.sqlite-wal
 test-results/
 lis-app-standalone/test-tmp/
 lis-app-standalone/tests/
@@ -59,6 +67,8 @@ lis-angular/backend/data/lib.db-wal
 # Chroma vector database and SQLite internal DBs
 chroma_db/
 **/chroma_db/
+*.sqlite
+**/*.sqlite
 *.sqlite3
 **/*.sqlite3
 
