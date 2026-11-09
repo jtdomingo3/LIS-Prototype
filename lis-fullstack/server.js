@@ -1144,6 +1144,28 @@ app.post('/api/internal/maintenance/execute', async (req, res) => {
   }
 });
 
+// GET /api/system/version – returns verified system build provenance & version
+app.get('/api/system/version', (req, res) => {
+  const metadataPath = path.join(__dirname, 'build-metadata.json');
+  let meta = {};
+  if (fs.existsSync(metadataPath)) {
+    try { meta = JSON.parse(fs.readFileSync(metadataPath, 'utf8')); } catch (_) {}
+  }
+  const pkgPath = path.join(__dirname, 'package.json');
+  const pkgVersion = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version : '3.1.0';
+
+  res.json({
+    ok: true,
+    name: 'Gezyne LIS Server',
+    version: meta.version || pkgVersion,
+    gitCommit: meta.gitCommit || 'dev',
+    gitBranch: meta.gitBranch || 'dev',
+    buildTimestamp: meta.buildTimestamp || null,
+    builderUser: meta.builderUser || 'Gezyne-Jamir Software Tech',
+    publisher: 'Gezyne-Jamir Software Tech'
+  });
+});
+
 // ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');
 const { v4: uuidRestore } = require('uuid');

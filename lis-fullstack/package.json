@@ -1,12 +1,16 @@
 {
     "name": "laboratory-information-system",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
     "main": "server.js",
     "bin": "server.js",
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js",
+        "build:server": "node ../scripts/build-server-setup.js",
+        "dist:win": "node ../scripts/build-server-setup.js",
+        "build:gate": "node ../scripts/build-gate.js",
+        "verify:freshness": "node ../test/verify-build-freshness.test.js --target server",
         "build:exe": "pkg . --out-path dist",
         "prepare-dist-data": "node ./scripts/make-dist-data.js && node ./scripts/encrypt-installer-resources.js",
         "encrypt-dist-data": "node ./scripts/encrypt-installer-resources.js",

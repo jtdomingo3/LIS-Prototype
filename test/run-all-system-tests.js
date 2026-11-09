@@ -115,12 +115,12 @@ const suites = [
     scope: 'DOH LTO Credentials, PhilHealth Accreditations, Dark Mode & Feature Flags'
   },
   {
-    name: 'Markdown Formatting, Manual & v3.0.0 Parity',
-    file: 'markdown-and-version-3.0.0.test.js',
-    scope: 'Markdown Line Breaks, Headings, Table of Contents, Version 3.0.0 Parity'
+    name: 'Markdown Formatting, Manual & v3.1.0 Parity',
+    file: 'markdown-and-version-3.1.0.test.js',
+    scope: 'Markdown Line Breaks, Headings, Table of Contents, Version 3.1.0 Parity'
   },
   {
-    name: 'GezyneBot AI Knowledge Coverage (v3.0.0)',
+    name: 'GezyneBot AI Knowledge Coverage (v3.1.0)',
     file: 'test_gezynebot_knowledge.js',
     scope: '16 Manual Chapters, Westgard Rules, Ultrasound, HR/Payroll across Server, Client & Tray'
   },

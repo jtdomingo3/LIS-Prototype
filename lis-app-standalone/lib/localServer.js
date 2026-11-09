@@ -517,6 +517,28 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     });
   }
 
+  /* ── System version & build provenance endpoint ────────────── */
+  app.get('/api/system/version', (req, res) => {
+    const metadataPath = path.join(__dirname, '..', 'build-metadata.json');
+    let meta = {};
+    if (fs.existsSync(metadataPath)) {
+      try { meta = JSON.parse(fs.readFileSync(metadataPath, 'utf8')); } catch (_) {}
+    }
+    const pkgPath = path.join(__dirname, '..', 'package.json');
+    const pkgVersion = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version : '3.1.0';
+
+    res.json({
+      ok: true,
+      name: 'Gezyne LIS Standalone',
+      version: meta.version || pkgVersion,
+      gitCommit: meta.gitCommit || 'dev',
+      gitBranch: meta.gitBranch || 'dev',
+      buildTimestamp: meta.buildTimestamp || null,
+      builderUser: meta.builderUser || 'Gezyne-Jamir Software Tech',
+      publisher: 'Gezyne-Jamir Software Tech'
+    });
+  });
+
   /* ══════════════════════════════════════════════════════════════
    *  Authorization & Route Permission Guard
    * ══════════════════════════════════════════════════════════════ */

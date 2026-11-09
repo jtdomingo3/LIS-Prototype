@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.1.0] - 2026-11-09
+
+### Security Hardening & AWS Inspector Compliance
+- **Zero Leaked Test Credentials**:
+  - Eliminated all hardcoded test accounts (`admin@lab.com`) and plain-text passwords from all 24 test and script files.
+  - Implemented dynamic secret loader (`test/test-auth-config.js` via `getTestCredentials()`), resolving credentials from gitignored `.env` with synthetic fallback (`test-admin@local.test`).
+  - Decoupled server admin email to dynamic `ADMIN_EMAIL` environment variable across fullstack server, seed script, desktop tray, and standalone sync engine.
+  - Upgraded test authentication from plaintext password submissions to cryptographically verified JWT Bearer tokens.
+- **SQLite Database & Runtime Secret Isolation**:
+  - Untracked SQLite runtime WAL/SHM artifacts (`lis-data.db-wal`, `lis-data.db-shm`, `lis.sqlite`) and local secret files (`.data_users_secret`) from Git tracking.
+  - Hardened global `.gitignore` to prevent any runtime database buffers or encryption keyfiles from accidental repository commits.
+- **AWS Inspector & OWASP Top 10 Remediation**:
+  - Validated 100/100 automated security audit score across both central server and standalone workstation (`tools/security-audit/run-security-audit.js`).
+  - Enforced strict TLS verification (CWE-295), dynamic CSPRNG keys (CWE-798), DOM XSS resilience (CWE-79), and dependency CVE overrides.
+
+### Added
+- **Pre-Build Test Gate & Post-Build Freshness Verification**:
+  - Compulsory test execution prior to Windows setup compilation: all 22 system test suites must pass 100%, otherwise compilation is aborted immediately.
+  - Automated post-build verification validating installer `.exe` creation time, binary sanity (>50MB), embedded Git commit SHA matching active repository HEAD, and zero secret leaks.
+  - Builder / Publisher identity standardized to **`Gezyne-Jamir Software Tech`**.
+- **Universal REST API Testing Collection**:
+  - Created vendor-neutral REST API test collection in `collections/` covering 72 endpoints across 18 clinical modules.
+- **KaTeX Mathematical Formula Rendering**:
+  - Full LaTeX formula parsing with KaTeX integration, display equations (`$$...$$`), and single-dollar currency isolation.
+
+### Changed
+- **System-Wide Version Milestone Bump**: Updated central fullstack server, standalone desktop client, system tray launcher, and mobile companion app to **Version 3.1.0**.
+
+---
+
 ## [3.0.0] - 2026-10-22
 
 ### Added

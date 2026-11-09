@@ -1,0 +1,20 @@
+{
+  "name": "gezyne-lis-monorepo",
+  "version": "3.1.0",
+  "description": "Gezyne Laboratory Information System (LIS) Enterprise Monorepo",
+  "author": "Gezyne-Jamir Software Tech",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/run-all-system-tests.js",
+    "test:all": "node test/run-all-system-tests.js",
+    "build:gate": "node scripts/build-gate.js",
+    "build:server": "node scripts/build-server-setup.js",
+    "build:standalone": "node scripts/build-standalone-setup.js",
+    "stamp:metadata": "node scripts/stamp-build-metadata.js --target all",
+    "verify:freshness": "node test/verify-build-freshness.test.js --target all",
+    "verify:server": "node test/verify-build-freshness.test.js --target server",
+    "verify:standalone": "node test/verify-build-freshness.test.js --target standalone",
+    "security-audit": "node tools/security-audit/run-security-audit.js"
+  }
+}
+

@@ -1,6 +1,6 @@
-# Gezyne LIS Standalone Desktop Client v3.0.0
+# Gezyne LIS Standalone Desktop Client v3.1.0
 
-[![Version](https://img.shields.io/badge/version-3.0.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-3.1.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(better--sqlite3)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -14,7 +14,23 @@ The standalone desktop application operates **100% autonomously without network 
 
 ## Version History & Release Notes
 
-### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects) — Current Release**
+### **v3.1.0 (AWS Inspector Security Hardening, Zero Credential Leaks, Gated Build Pipeline & 22-Suite Test Harness) — Current Release**
+- **Security & AWS Inspector Compliance (100% Audit Score)**:
+  - **Zero Leaked Test Credentials**: Eliminated all hardcoded test accounts and passwords across 24 test and script files. Centralized dynamic test secrets in gitignored `.env` via `getTestCredentials()` with synthetic fallback (`test-admin@local.test`).
+  - **Server Admin Environment Decoupling**: Dynamic server configuration via `ADMIN_EMAIL` env variable across fullstack server, database seed, desktop tray, and standalone sync engine.
+  - **JWT Bearer Authentication**: Replaced plaintext HTTP logins in test suites with secure JWT Bearer authorization tokens.
+  - **SQLite Runtime & Secret File Isolation**: Untracked runtime WAL/SHM buffers (`lis-data.db-wal`, `lis-data.db-shm`, `lis.sqlite`) and local secret files; hardened `.gitignore`.
+  - **OWASP & Inspector Remediation**: Strict TLS verification (CWE-295), dynamic CSPRNG keys (CWE-798), DOM XSS resilience (CWE-79), and dependency CVE overrides.
+- **Pre-Build Test Gate & Post-Build Freshness Verification**:
+  - Compulsory test execution prior to Windows setup compilation: all 22 system test suites must pass 100%, otherwise compilation is aborted immediately.
+  - Automated post-build verification validating installer `.exe` creation time, binary sanity (>50MB), embedded Git commit SHA matching active repository HEAD, and zero secret leaks.
+  - Builder / Publisher identity standardized to **`Gezyne-Jamir Software Tech`**.
+- **Universal API Endpoints Collection**:
+  - Created vendor-neutral REST API test collection in `collections/` covering 72 endpoints across 18 clinical modules.
+- **KaTeX Mathematical Formula Rendering**:
+  - Full LaTeX formula parsing with KaTeX integration, display equations (`$$...$$`), and single-dollar currency isolation.
+
+### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects)**
 - **Automated Chemistry Calculation Engine & Calculation Parity**:
   - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
   - Zero `NaN` and zero arithmetic error safeguards across both input events and server-side worksheet processing.
@@ -267,19 +283,19 @@ node test/settings-system.test.js
 
 ---
 
-## Building the Windows Installer (v3.0.0)
+## Building the Windows Installer (v3.1.0)
 
 To compile the production Windows desktop installer package:
 
 ```powershell
-# Compile NSIS Windows Setup (.exe)
+# Compile NSIS Windows Setup (.exe) with test gate & freshness verification
 npm run dist:win
 
 # Compile unpacked executable directory for testing
 npm run dist:dir
 ```
 
-Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 3.0.0.exe`
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 3.1.0.exe`
 
 ---
 

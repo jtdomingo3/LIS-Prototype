@@ -1,14 +1,14 @@
 const assert = require('assert');
 const path = require('path');
 
-console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v3.0.0) ===\n');
+console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v3.1.0) ===\n');
 
 const fullstackService = require('../lis-fullstack/lib/gezyneBotService');
 const standaloneService = require('../lis-app-standalone/lib/gezyneBotService');
 const trayService = require('../lis-fullstack/tray/lib/gezyneBotService');
 
 const requiredKeywords = [
-  'LIS Version 3.0.0',
+  'LIS Version 3.1.0',
   '1. Reception: Patient Intake, Queue Management & Test Packages',
   'Packages 1 to 6',
   '2. PhilHealth & Health Card (HMO) Claims Management',

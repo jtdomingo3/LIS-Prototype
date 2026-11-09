@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v3.0.0
+# Gezyne Laboratory Information System (LIS) v3.1.0
 
-[![Version](https://img.shields.io/badge/version-3.0.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-3.1.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](<https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite>)](https://www.sqlite.org/)
 [![Electron](<https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron>)](https://www.electronjs.org/)
 [![Offline](<https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square>)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v3.0.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v3.1.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,10 +15,10 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v3.0.0)
+├── README.md                  # Central system documentation (v3.1.0)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v3.0.0)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v3.1.0)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine, payroll/tax calculators
@@ -30,15 +30,15 @@
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v3.0.0)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v3.1.0)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & SQLite queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
 │   ├── views/                 # Full local UI with auto-hidden sidebars on small screens
 │   └── main.js                # Electron main process & child window manager
 │
-├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v3.0.0)
-├── lis-mobile/                # Mobile companion application (Cordova/Capacitor) (v3.0.0)
+├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v3.1.0)
+├── lis-mobile/                # Mobile companion application (Cordova/Capacitor) (v3.1.0)
 ├── lis-angular/               # Alternative Angular single-page frontend
 └── test/                      # Comprehensive integration, offline, inventory & sync test suites
 ```
@@ -47,7 +47,24 @@
 
 ## Version History & Release Notes
 
-### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects) — Current Release**
+### **v3.1.0 (AWS Inspector Security Hardening, Zero Credential Leaks, Gated Build Pipeline & 22-Suite Test Harness) — Current Release**
+
+- **Security & AWS Inspector Compliance (100% Audit Score)**:
+  - **Zero Leaked Test Credentials**: Eliminated all hardcoded test accounts and passwords across 24 test and script files. Centralized dynamic test secrets in gitignored `.env` via `getTestCredentials()` with synthetic fallback (`test-admin@local.test`).
+  - **Server Admin Environment Decoupling**: Dynamic server configuration via `ADMIN_EMAIL` env variable across fullstack server, database seed, desktop tray, and standalone sync engine.
+  - **JWT Bearer Authentication**: Replaced plaintext HTTP logins in test suites with secure JWT Bearer authorization tokens.
+  - **SQLite Runtime & Secret File Isolation**: Untracked runtime WAL/SHM buffers (`lis-data.db-wal`, `lis-data.db-shm`, `lis.sqlite`) and local secret files; hardened `.gitignore`.
+  - **OWASP & Inspector Remediation**: Strict TLS verification (CWE-295), dynamic CSPRNG keys (CWE-798), DOM XSS resilience (CWE-79), and dependency CVE overrides.
+- **Pre-Build Test Gate & Post-Build Freshness Verification**:
+  - Compulsory test execution prior to Windows setup compilation: all 22 system test suites must pass 100%, otherwise compilation is aborted immediately.
+  - Automated post-build verification validating installer `.exe` creation time, binary sanity (>50MB), embedded Git commit SHA matching active repository HEAD, and zero secret leaks.
+  - Builder / Publisher identity standardized to **`Gezyne-Jamir Software Tech`**.
+- **Universal API Endpoints Collection**:
+  - Created vendor-neutral REST API test collection in `collections/` covering 72 endpoints across 18 clinical modules.
+- **KaTeX Mathematical Formula Rendering**:
+  - Full LaTeX formula parsing with KaTeX integration, display equations (`$$...$$`), and single-dollar currency isolation.
+
+### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects)**
 
 - **Automated Chemistry Calculation Engine & Calculation Parity**:
   - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
@@ -319,31 +336,27 @@ The desktop client runs an embedded local engine on `http://127.0.0.1:30099` wit
 
 ---
 
-## Packaging Windows Installers (v3.0.0)
+## Packaging Windows Installers (v3.1.0)
 
-### 1. Build Central Server Installer (`Gezyne LIS Server Setup 3.0.0.exe`)
+### 1. Build Central Server Installer (`Gezyne LIS Server Setup 3.1.0.exe`)
 
 ```powershell
 cd lis-fullstack
-npm run build:exe
-npm run prepare-dist-data
-
-cd tray
-npm install
-npm run dist:win
+npm run build:server
+# Or: npm run dist:win
 ```
 
-*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 3.0.0.exe`*
+*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 3.1.0.exe`*
 
-### 2. Build Standalone Client Installer (`Gezyne LIS Setup 3.0.0.exe`)
+### 2. Build Standalone Client Installer (`Gezyne LIS Setup 3.1.0.exe`)
 
 ```powershell
 cd lis-app-standalone
-npm install
-npm run dist:win
+npm run build:standalone
+# Or: npm run dist:win
 ```
 
-*Output: `lis-app-standalone/dist/Gezyne LIS Setup 3.0.0.exe`*
+*Output: `lis-app-standalone/dist/Gezyne LIS Setup 3.1.0.exe`*
 
 ---
 

@@ -121,3 +121,7 @@ _agents/
 # Temporary scratch and debugging scripts
 scratch/
 **/scratch/
+
+# Dynamic build metadata stamps
+build-metadata.json
+**/build-metadata.json
