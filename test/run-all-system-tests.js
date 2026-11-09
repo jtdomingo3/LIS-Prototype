@@ -143,6 +143,11 @@ const suites = [
     name: 'Client-Side Idle Warning & Session Touch Suite',
     file: 'client-side-idle-warning.test.js',
     scope: 'Inactivity Detection, Warning Modal, Live Countdown, Session Touch Keep-Alive, PHI Protection'
+  },
+  {
+    name: 'KaTeX Formula & Mathematical Rendering Suite',
+    file: 'katex-render.test.js',
+    scope: 'Display LaTeX Math, Inline Math Formats, Single Dollar Currency Isolation'
   }
 ];
 

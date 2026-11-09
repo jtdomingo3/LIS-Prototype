@@ -1,0 +1,2104 @@
+{
+  "info": {
+    "_postman_id": "gezyne-lis-fullstack-collection-v1",
+    "name": "Gezyne Laboratory Information System (LIS) API",
+    "description": "Complete API test collection for Gezyne LIS Server covering all 18 clinical, laboratory, financial, and administrative modules.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication & Security",
+      "item": [
+        {
+          "name": "Get JWT Auth Token (Sets {{authToken}})",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "token"
+              ]
+            },
+            "description": "Authenticates user credentials and issues a signed JWT Bearer token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.token) {",
+                  "    pm.environment.set('authToken', json.token);",
+                  "    console.log('Saved authToken into environment');",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Active JWT Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify"
+              ]
+            },
+            "description": "Verifies current Bearer token claims and validity."
+          }
+        },
+        {
+          "name": "Session Touch / Keepalive Ping",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/ping",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "ping"
+              ]
+            },
+            "description": "Client-side session keepalive endpoint (prevents idle timeout)."
+          }
+        },
+        {
+          "name": "Get Login Page (CSRF Token)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Retrieves HTML login form containing anti-CSRF token."
+          }
+        },
+        {
+          "name": "Session Logout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logout"
+              ]
+            },
+            "description": "Invalidates current cookie-based session."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Dashboard & System Analytics",
+      "item": [
+        {
+          "name": "Dashboard Main Page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ]
+            },
+            "description": "Main administrative dashboard view."
+          }
+        },
+        {
+          "name": "Dashboard JSON Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "stats"
+              ]
+            },
+            "description": "Real-time KPI aggregations (daily patients, tests processed, pending releases)."
+          }
+        },
+        {
+          "name": "API Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "summary"
+              ]
+            },
+            "description": "JSON summary endpoint for mobile and kiosk clients."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Patients Registry & MRN",
+      "item": [
+        {
+          "name": "List Patients (Paginated & Filterable)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients?page=1&limit=20&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients?page=1&limit=20&search="
+              ]
+            },
+            "description": "Returns list of registered patients."
+          }
+        },
+        {
+          "name": "Create New Patient (Auto-MRN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            },
+            "description": "Registers patient and automatically assigns a unique MRN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Dela Cruz\",\n  \"middleName\": \"Protacio\",\n  \"birthDate\": \"1988-06-19\",\n  \"gender\": \"Male\",\n  \"contactNumber\": \"09171234567\",\n  \"address\": \"123 Mabini St, Manila\",\n  \"civilStatus\": \"Married\",\n  \"seniorCitizenId\": \"\",\n  \"pwdId\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.patient && json.patient.id) {",
+                  "    pm.environment.set('patientId', json.patient.id);",
+                  "  } else if (json.id) {",
+                  "    pm.environment.set('patientId', json.id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Patient Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{patientId}}"
+              ]
+            },
+            "description": "Fetches detailed demographics and clinical test history for patient."
+          }
+        },
+        {
+          "name": "Update Patient Demographics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/edit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{patientId}}",
+                "edit"
+              ]
+            },
+            "description": "Updates patient information.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Dela Cruz\",\n  \"middleName\": \"Protacio\",\n  \"contactNumber\": \"09179998877\",\n  \"address\": \"456 Rizal Ave, Manila\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Autocomplete Search Patients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patients/search?q=Dela",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patients",
+                "search?q=Dela"
+              ]
+            },
+            "description": "Fast autocomplete search by MRN or Name."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Reception & 10-Station Queue Pipeline",
+      "item": [
+        {
+          "name": "Reception Dashboard & Active Queues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reception",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reception"
+              ]
+            },
+            "description": "Real-time queue board across all 10 clinical stations."
+          }
+        },
+        {
+          "name": "Check-In Patient to Station Queue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reception/checkin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reception",
+                "checkin"
+              ]
+            },
+            "description": "Queues patient for phlebotomy / specimen extraction.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"station\": \"Extraction\",\n  \"priority\": \"Regular\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Complete Station Stage (Advance Workflow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reception/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reception",
+                "complete"
+              ]
+            },
+            "description": "Marks extraction done and routes patient to next ordered service (e.g. ECG, X-Ray, Laboratory).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"area\": \"Phlebotomy / Extraction\",\n  \"status\": \"Completed\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Undo / Rollback Station Stage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reception/undo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reception",
+                "undo"
+              ]
+            },
+            "description": "Reverses an accidental station completion.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"area\": \"Phlebotomy / Extraction\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Laboratory Tests & Diagnostic Results",
+      "item": [
+        {
+          "name": "List Laboratory Tests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tests?status=Pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tests?status=Pending"
+              ]
+            },
+            "description": "Filters diagnostic tests by status (Pending, In Progress, Verified, Released)."
+          }
+        },
+        {
+          "name": "Order Diagnostic Test for Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tests"
+              ]
+            },
+            "description": "Creates new diagnostic test order for patient.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patient\": \"{{patientId}}\",\n  \"testType\": \"Complete Blood Count\",\n  \"package\": \"Routine Hematology\",\n  \"clinicalNotes\": \"Pre-employment medical clearance\",\n  \"urgent\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.test && json.test.id) pm.environment.set('testId', json.test.id);",
+                  "  else if (json.id) pm.environment.set('testId', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Test Details & Result Parameters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tests/{{testId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tests",
+                "{{testId}}"
+              ]
+            },
+            "description": "Retrieves test status and parameter schema."
+          }
+        },
+        {
+          "name": "Encode / Submit Diagnostic Analyte Results",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tests/{{testId}}/results",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tests",
+                "{{testId}}",
+                "results"
+              ]
+            },
+            "description": "Saves numeric laboratory results and auto-calculates Wintrobe indices (MCV, MCH, MCHC).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"results\": {\n    \"wbc\": \"7.2\",\n    \"rbc\": \"4.8\",\n    \"hemoglobin\": \"145\",\n    \"hematocrit\": \"0.42\",\n    \"platelets\": \"250\",\n    \"neutrophils\": \"0.60\",\n    \"lymphocytes\": \"0.32\",\n    \"monocytes\": \"0.05\",\n    \"eosinophils\": \"0.02\",\n    \"basophils\": \"0.01\"\n  },\n  \"remarks\": \"Within normal limits. Auto-calculated indices normal.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify Test Results (Medical Technologist)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tests/{{testId}}/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tests",
+                "{{testId}}",
+                "verify"
+              ]
+            },
+            "description": "Signatory Level 1: Medical Technologist verifies analytical accuracy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifiedBy\": \"MedTech RMT\",\n  \"signaturePin\": \"1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Release & Finalize Test (Pathologist)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tests/{{testId}}/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tests",
+                "{{testId}}",
+                "release"
+              ]
+            },
+            "description": "Signatory Level 2: Pathologist authorizes official clinical report for printing and patient release.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"releasedBy\": \"Dr. Pathologist\",\n  \"signaturePin\": \"5678\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Clinical Reports & Printing",
+      "item": [
+        {
+          "name": "Reports Center List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ]
+            },
+            "description": "View all release-ready laboratory reports."
+          }
+        },
+        {
+          "name": "Preview Official Clinical Report HTML",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/{{testId}}/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "{{testId}}",
+                "preview"
+              ]
+            },
+            "description": "Renders formatted clinical report with QR code and digital signatures."
+          }
+        },
+        {
+          "name": "Generate Official Report PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/{{testId}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "{{testId}}",
+                "pdf"
+              ]
+            },
+            "description": "Downloads binary PDF version of clinical report."
+          }
+        },
+        {
+          "name": "Batch Thermal / Laser Print Queue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/batch/print",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "batch",
+                "print"
+              ]
+            },
+            "description": "Queues one or more reports for bulk printing.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"testIds\": [\n    \"{{testId}}\"\n  ],\n  \"printerType\": \"laser\",\n  \"copies\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Master Daily Laboratory Worksheet Compilation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/daily-worksheet?date=2026-11-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "daily-worksheet?date=2026-11-09"
+              ]
+            },
+            "description": "Generates daily lab worksheet summary for all benches."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Diagnostic Templates & Catalog",
+      "item": [
+        {
+          "name": "List Catalog Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates"
+              ]
+            },
+            "description": "Lists all clinical test templates and parameter definitions."
+          }
+        },
+        {
+          "name": "Create Test Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates"
+              ]
+            },
+            "description": "Registers a new test panel with reference ranges.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"LIPID\",\n  \"name\": \"Lipid Profile Panel\",\n  \"department\": \"Clinical Chemistry\",\n  \"price\": 650,\n  \"parameters\": [\n    {\n      \"key\": \"cholesterol\",\n      \"label\": \"Total Cholesterol\",\n      \"unit\": \"mg/dL\",\n      \"refLow\": 0,\n      \"refHigh\": 200\n    },\n    {\n      \"key\": \"triglycerides\",\n      \"label\": \"Triglycerides\",\n      \"unit\": \"mg/dL\",\n      \"refLow\": 0,\n      \"refHigh\": 150\n    },\n    {\n      \"key\": \"hdl\",\n      \"label\": \"HDL Cholesterol\",\n      \"unit\": \"mg/dL\",\n      \"refLow\": 40,\n      \"refHigh\": 60\n    },\n    {\n      \"key\": \"ldl\",\n      \"label\": \"LDL Cholesterol\",\n      \"unit\": \"mg/dL\",\n      \"refLow\": 0,\n      \"refHigh\": 100\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Template Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/templates/LIPID",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "templates",
+                "LIPID"
+              ]
+            },
+            "description": "Fetches template definition by code."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Diagnostic Inventory & ISO 15189",
+      "item": [
+        {
+          "name": "Inventory Dashboard & Stock Levels",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory"
+              ]
+            },
+            "description": "Real-time stock on hand across all laboratory departments."
+          }
+        },
+        {
+          "name": "Create Reagent / Consumable Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "items"
+              ]
+            },
+            "description": "Creates inventory master record.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemCode\": \"RGT-CBC-DIL-01\",\n  \"name\": \"Mindray Diluent Reagent (20L)\",\n  \"category\": \"Hematology Reagent\",\n  \"unit\": \"Box\",\n  \"minimumStockAlert\": 3\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.item && json.item.id) pm.environment.set('itemId', json.item.id);",
+                  "  else if (json.id) pm.environment.set('itemId', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receive Reagent Batch / Lot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "batches"
+              ]
+            },
+            "description": "Logs received reagent lot with expiry date.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"{{itemId}}\",\n  \"lotNumber\": \"LOT-202611-042\",\n  \"quantity\": 10,\n  \"expirationDate\": \"2027-11-01\",\n  \"storageCondition\": \"Room Temperature (18-25 C)\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Record Consumption / Usage Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transactions"
+              ]
+            },
+            "description": "Deducts stock and logs ISO 15189 audit trail entry.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"itemId\": \"{{itemId}}\",\n  \"lotNumber\": \"LOT-202611-042\",\n  \"type\": \"CONSUMPTION\",\n  \"quantity\": 1,\n  \"remarks\": \"Daily hematology bench routine run\",\n  \"performedBy\": \"MedTech Staff\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Critical Stock & Expiring Lots Alert",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/alerts/critical",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "alerts",
+                "critical"
+              ]
+            },
+            "description": "Returns items below minimum buffer stock or expiring within 30 days."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Equipment QC, Levey-Jennings & NEQAS NRL",
+      "item": [
+        {
+          "name": "Equipment Registry",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment"
+              ]
+            },
+            "description": "All connected clinical analyzers and instruments."
+          }
+        },
+        {
+          "name": "Register Clinical Analyzer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment"
+              ]
+            },
+            "description": "Registers laboratory analyzer.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mindray BS-240 Clinical Chemistry Analyzer\",\n  \"serialNumber\": \"BS240-PH-9921\",\n  \"department\": \"Clinical Chemistry\",\n  \"status\": \"Operational\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.equipment && json.equipment.id) pm.environment.set('equipmentId', json.equipment.id);",
+                  "  else if (json.id) pm.environment.set('equipmentId', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Levey-Jennings QC Chart Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment/{{equipmentId}}/qc/levey-jennings?analyteCode=fbs&level=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment",
+                "{{equipmentId}}",
+                "qc",
+                "levey-jennings?analyteCode=fbs&level=1"
+              ]
+            },
+            "description": "Returns daily control runs, Mean, SD, and Westgard multi-rule flags (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10:x)."
+          }
+        },
+        {
+          "name": "Log Daily Quality Control Reading",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment/{{equipmentId}}/qc/entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment",
+                "{{equipmentId}}",
+                "qc",
+                "entries"
+              ]
+            },
+            "description": "Appends daily QC data point.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"analyteCode\": \"fbs\",\n  \"level\": 1,\n  \"value\": 102.5,\n  \"runDate\": \"2026-11-09\",\n  \"operator\": \"QC MedTech\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Drop / Delete Erroneous QC Reading",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment/{{equipmentId}}/qc/entries/last?analyteCode=fbs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment",
+                "{{equipmentId}}",
+                "qc",
+                "entries",
+                "last?analyteCode=fbs"
+              ]
+            },
+            "description": "Removes accidental input reading."
+          }
+        },
+        {
+          "name": "List NEQAS EQA Proficiency Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment/neqas/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment",
+                "neqas",
+                "all"
+              ]
+            },
+            "description": "Retrieves external quality assessment performance and SDI scores."
+          }
+        },
+        {
+          "name": "List Accredited NRL Reference Centers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment/neqas/nrl-list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment",
+                "neqas",
+                "nrl-list"
+              ]
+            },
+            "description": "Lists National Reference Laboratories (EAMC, NKTI, RITM, LCP, SLH)."
+          }
+        },
+        {
+          "name": "Register Custom NRL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/equipment/neqas/nrl-list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "equipment",
+                "neqas",
+                "nrl-list"
+              ]
+            },
+            "description": "Registers specialized NRL center.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"PHC-NRL\",\n  \"name\": \"Philippine Heart Center (Cardiovascular NRL)\",\n  \"contactPerson\": \"Dr. Director\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. User Management & RBAC Permissions",
+      "item": [
+        {
+          "name": "List Staff Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Lists users with active roles and permissions."
+          }
+        },
+        {
+          "name": "Create Staff User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Provisions user account with role-based permissions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Santos, RMT\",\n  \"email\": \"maria.santos@lab.local\",\n  \"role\": \"Medical Technologist\",\n  \"licenseNumber\": \"0098765\",\n  \"password\": \"InitialPassword2026!\",\n  \"permissions\": {\n    \"tests\": true,\n    \"reports\": true,\n    \"worksheet\": true,\n    \"equipment\": true,\n    \"inventory\": true\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Get User Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "profile"
+              ]
+            },
+            "description": "Fetches profile of currently logged-in user."
+          }
+        },
+        {
+          "name": "Administrative Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/1/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "1",
+                "reset-password"
+              ]
+            },
+            "description": "Resets staff user password to default.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Settings, Accreditations & Database Backup",
+      "item": [
+        {
+          "name": "Get System Settings & Accreditation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings"
+              ]
+            },
+            "description": "Returns laboratory license (DOH LTO), PhilHealth ID, and thermal printer settings."
+          }
+        },
+        {
+          "name": "Save Facility Settings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings"
+              ]
+            },
+            "description": "Updates institutional accreditations and hardware configurations.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityName\": \"Gezyne Clinical Diagnostic Laboratory\",\n  \"dohLto\": \"DOH-LTO-NCR-2026-00451\",\n  \"philhealthAccreditation\": \"PH-ACC-98214\",\n  \"printerName\": \"XP-58C Thermal Barcode Printer\",\n  \"sseAutoRefreshByDefault\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Trigger Thermal Test Print",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/settings/test-print",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "test-print"
+              ]
+            },
+            "description": "Fires ESC/POS diagnostic barcode print ticket.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Export Full Laboratory Database (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/export/data.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "export",
+                "data.json"
+              ]
+            },
+            "description": "Dumps complete system data for offline backup and synchronization."
+          }
+        },
+        {
+          "name": "Emergency Restore Default Admin User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/restore/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "restore",
+                "users"
+              ]
+            },
+            "description": "Recovery endpoint to restore primary administrator user if locked out.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Digital Signatures & PIN Authorization",
+      "item": [
+        {
+          "name": "Digital Signatures Directory",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/signatures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "signatures"
+              ]
+            },
+            "description": "Lists certified signatories and electronic signature status."
+          }
+        },
+        {
+          "name": "Verify Electronic Signature PIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/signatures/verify-pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "signatures",
+                "verify-pin"
+              ]
+            },
+            "description": "Cryptographically validates signatory PIN before affixing digital signature to report.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pin\": \"1234\",\n  \"userId\": \"admin-test-01\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Laboratory Costing, Expense & Financial P&L",
+      "item": [
+        {
+          "name": "Costing & Financial Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/costing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "costing"
+              ]
+            },
+            "description": "Revenue, reagent expenditure, and net margin overview."
+          }
+        },
+        {
+          "name": "Revenue Entries List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/costing/revenue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "costing",
+                "revenue"
+              ]
+            },
+            "description": "Daily patient billings and cash intake."
+          }
+        },
+        {
+          "name": "Log Operating Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/costing/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "costing",
+                "expenses"
+              ]
+            },
+            "description": "Records overhead cost for P&L calculations.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Utilities\",\n  \"description\": \"Laboratory air conditioning & power bill\",\n  \"amount\": 8500,\n  \"date\": \"2026-11-09\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Monthly Profit & Loss (P&L) Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/costing/monthly?year=2026&month=11",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "costing",
+                "monthly?year=2026&month=11"
+              ]
+            },
+            "description": "Produces accounting statement with gross revenue, COGS (reagents), expenses, and net profit margin."
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Human Resources & Statutory Payroll",
+      "item": [
+        {
+          "name": "HR Staff Directory",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hr/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hr",
+                "employees"
+              ]
+            },
+            "description": "Lists clinical and administrative personnel."
+          }
+        },
+        {
+          "name": "Register Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hr/employees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hr",
+                "employees"
+              ]
+            },
+            "description": "Registers HR employee profile.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Carla\",\n  \"lastName\": \"Reyes\",\n  \"department\": \"Clinical Laboratory\",\n  \"position\": \"Senior Medical Technologist\",\n  \"employmentStatus\": \"Regular\",\n  \"monthlyRate\": 35000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.employee && json.employee.id) pm.environment.set('employeeId', json.employee.id);",
+                  "  else if (json.id) pm.environment.set('employeeId', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Daily Time Record (DTR) Attendance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hr/attendance?date=2026-11-09",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hr",
+                "attendance?date=2026-11-09"
+              ]
+            },
+            "description": "Clock-in/out records and overtime tracking."
+          }
+        },
+        {
+          "name": "Payroll Computation (TRAIN & Statutory)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hr/payroll?period=2026-11-A",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hr",
+                "payroll?period=2026-11-A"
+              ]
+            },
+            "description": "Computes Philippine statutory deductions: SSS, PhilHealth, Pag-IBIG, and withholding tax."
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. PhilHealth Konsulta & HMO Health Card",
+      "item": [
+        {
+          "name": "PhilHealth Konsulta Claims Registry",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/philhealth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "philhealth"
+              ]
+            },
+            "description": "Lists primary care consultation and laboratory packages for PhilHealth reimbursement."
+          }
+        },
+        {
+          "name": "Submit PhilHealth Claim Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/philhealth/claims",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "philhealth",
+                "claims"
+              ]
+            },
+            "description": "Logs PhilHealth e-Claim transaction.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"packageType\": \"Complete Blood Count\",\n  \"claimAmount\": 250,\n  \"status\": \"SUBMITTED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "HMO Health Card Receivables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/healthcard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "healthcard"
+              ]
+            },
+            "description": "Lists claims categorized by corporate provider (Maxicare, Intellicare, Medicard, PhilCare)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Doctor Consultations & Physical Exam",
+      "item": [
+        {
+          "name": "Doctor Consultations List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/consultations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consultations"
+              ]
+            },
+            "description": "Clinical encounters and medical check-ups."
+          }
+        },
+        {
+          "name": "Create Clinical Consultation Encounter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/consultations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "consultations"
+              ]
+            },
+            "description": "Records SOAP clinical notes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"attendingDoctor\": \"Dr. Lorenzo, MD\",\n  \"subjective\": \"Patient reports mild cough and headache for 3 days.\",\n  \"objective\": \"BP 120/80, Temp 36.8 C, Heart sounds normal.\",\n  \"assessment\": \"Acute Upper Respiratory Tract Infection (URTI)\",\n  \"plan\": \"Prescribed hydration, rest, Paracetamol 500mg PRN.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. GezyneBot Clinical AI Assistant (RAG)",
+      "item": [
+        {
+          "name": "Active Chatbot Conversations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chatbot/conversations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chatbot",
+                "conversations"
+              ]
+            },
+            "description": "Fetches list of clinical AI chats."
+          }
+        },
+        {
+          "name": "Send Message to GezyneBot RAG",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chatbot/message",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chatbot",
+                "message"
+              ]
+            },
+            "description": "Queries the embedded local vector database and LLM clinical assistant.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What are the Westgard multi-rules for Levey-Jennings chemistry controls?\",\n  \"context\": \"equipment-qc\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. Offline Standalone Node Synchronization",
+      "item": [
+        {
+          "name": "Download Server Snapshot Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "data.json"
+              ]
+            },
+            "description": "Full state snapshot used by standalone Electron apps on boot."
+          }
+        },
+        {
+          "name": "Replay Standalone Offline Mutation Batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sync"
+              ]
+            },
+            "description": "Bulk synchronization endpoint for standalone offline client queues.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operations\": [\n    {\n      \"method\": \"POST\",\n      \"path\": \"/patients\",\n      \"body\": {\n        \"firstName\": \"Offline\",\n        \"lastName\": \"SyncTest\"\n      }\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

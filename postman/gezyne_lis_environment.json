@@ -1,0 +1,52 @@
+{
+  "id": "gezyne-lis-env-001",
+  "name": "Gezyne LIS Local Environment",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000",
+      "enabled": true
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "enabled": true
+    },
+    {
+      "key": "adminPassword",
+      "value": "admin123",
+      "enabled": true
+    },
+    {
+      "key": "patientId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "testId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "equipmentId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "itemId",
+      "value": "",
+      "enabled": true
+    },
+    {
+      "key": "employeeId",
+      "value": "",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}
