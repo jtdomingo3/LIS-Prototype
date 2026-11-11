@@ -278,7 +278,7 @@ class Patient {
         const index = patients.findIndex(p => p.id === existing.id);
         if (index >= 0) {
           patients.splice(index, 1);
-          global.db.savePatients(patients);
+          global.db.savePatients(patients, { replace: true });
         }
       }
       return new Patient(existing);

@@ -9,6 +9,7 @@ const pathMod = require('path');
 const Jimp = require('jimp');
 const bwipjs = require('bwip-js');
 const sseEmitter = require('../lib/sseEmitter');
+const { toManilaDateString } = require('../lib/dateHelper');
 let body, validationResult;
 try {
   const ev = require('express-validator');
@@ -60,7 +61,7 @@ function appendPrintLog(entry) {
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
+    const limit = parseInt(req.query.limit) || 25;
     const skip = (page - 1) * limit;
 
     const searchQuery = req.query.search || '';
@@ -113,13 +114,13 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       allPatients = allPatients.filter(p => (p.company || '').toString().toLowerCase().includes(compLower));
     }
 
-    // Date filter (match createdAt date YYYY-MM-DD)
+    // Date filter (match createdAt date YYYY-MM-DD in Manila UTC+8)
     if (dateFilter) {
       const df = String(dateFilter);
       allPatients = allPatients.filter(p => {
         const dt = p.testDate || p.createdAt || p.dateOfBirth || null;
         try {
-          return dt ? new Date(dt).toISOString().slice(0,10) === df : false;
+          return dt ? toManilaDateString(dt) === df : false;
         } catch (e) { return false; }
       });
     }
@@ -494,7 +495,7 @@ router.post('/', requireAuth, canAccessPatient, [
         const PhilhealthRecord = require('../models/PhilhealthRecord');
         const existingPh = await PhilhealthRecord.findOne({ patientId: patient.id });
         if (!existingPh) {
-          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const recDate = toManilaDateString(patient.createdAt || new Date());
           const controlNo = PhilhealthRecord.getNextControlNo(recDate);
           const phRec = new PhilhealthRecord({
             controlNo,
@@ -528,7 +529,7 @@ router.post('/', requireAuth, canAccessPatient, [
         const HealthCardRecord = require('../models/HealthCardRecord');
         const existingHc = await HealthCardRecord.findOne({ patientId: patient.id });
         if (!existingHc) {
-          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const recDate = toManilaDateString(patient.createdAt || new Date());
           const controlNo = HealthCardRecord.getNextControlNo(recDate);
           const hcRec = new HealthCardRecord({
             controlNo,
@@ -854,7 +855,7 @@ router.put('/:id', requireAuth, canAccessPatient, [
         const PhilhealthRecord = require('../models/PhilhealthRecord');
         let ph = await PhilhealthRecord.findOne({ patientId: patient.id });
         if (!ph) {
-          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const recDate = toManilaDateString(patient.createdAt || new Date());
           ph = new PhilhealthRecord({
             controlNo: PhilhealthRecord.getNextControlNo(recDate),
             patientId: patient.id,
@@ -888,7 +889,7 @@ router.put('/:id', requireAuth, canAccessPatient, [
         const HealthCardRecord = require('../models/HealthCardRecord');
         let hc = await HealthCardRecord.findOne({ patientId: patient.id });
         if (!hc) {
-          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const recDate = toManilaDateString(patient.createdAt || new Date());
           hc = new HealthCardRecord({
             controlNo: HealthCardRecord.getNextControlNo(recDate),
             patientId: patient.id,

@@ -354,6 +354,22 @@ async function processMaintenanceFlags() {
   } catch (e) {
     console.error('[server] Failed to seed default admin user:', e);
   }
+
+  // Automatic disk hygiene at startup (prunes stale backups >60d, orphaned .tmp, oversized logs)
+  try {
+    const { runDiskHygiene } = require('./lib/diskCleaner');
+    const hygieneResult = runDiskHygiene({ dataDir: DATA_DIR });
+    console.log(`[server] Disk hygiene completed: ${hygieneResult.backupsRemoved} old backups pruned, ${hygieneResult.filesCleaned} temp files cleaned, freed ${(hygieneResult.totalBytesFreed / (1024 * 1024)).toFixed(2)} MB`);
+    
+    // Schedule periodic hygiene every 24 hours
+    setInterval(() => {
+      try {
+        runDiskHygiene({ dataDir: DATA_DIR });
+      } catch (_) {}
+    }, 24 * 60 * 60 * 1000).unref();
+  } catch (e) {
+    console.warn('[server] Non-fatal disk hygiene warning:', e.message);
+  }
 })();
 
 // Make db available globally

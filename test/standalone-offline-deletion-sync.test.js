@@ -26,15 +26,17 @@ async function runDeletionSyncTest() {
 
   global.db = {
     getPatients: () => ds.getCollection('patients'),
-    savePatients: (p) => ds.setCollection('patients', p),
+    savePatients: (p, opts) => ds.setCollection('patients', p, opts),
+    deletePatient: (id) => ds.db && ds.db.deletePatient ? ds.db.deletePatient(id) : null,
     getTests: () => ds.getCollection('tests'),
-    saveTests: (t) => ds.setCollection('tests', t),
+    saveTests: (t, opts) => ds.setCollection('tests', t, opts),
+    deleteTest: (id) => ds.db && ds.db.deleteTest ? ds.db.deleteTest(id) : null,
     getCounters: () => ds.getCollection('counters'),
-    saveCounters: (c) => ds.setCollection('counters', c),
+    saveCounters: (c, opts) => ds.setCollection('counters', c, opts),
     getUsers: () => ds.getCollection('users'),
-    saveUsers: (u) => ds.setCollection('users', u),
+    saveUsers: (u, opts) => ds.setCollection('users', u, opts),
     getTemplates: () => ds.getCollection('templates'),
-    saveTemplates: (t) => ds.setCollection('templates', t),
+    saveTemplates: (t, opts) => ds.setCollection('templates', t, opts),
     read: () => ds.getAll(),
     write: (data) => ds.db.write(data)
   };

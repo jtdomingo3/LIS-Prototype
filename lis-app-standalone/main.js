@@ -925,7 +925,7 @@ async function triggerAutoSync() {
     if (remaining === 0 && synced > 0) {
       console.log('[Main] auto-sync completed all items — running full-sync');
       try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
-      await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, { replace: true });
+      await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
       sendStatus();
     }
   } catch (e) {

@@ -14,6 +14,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const SCHEMA_VERSION = 1;
 
@@ -125,6 +126,49 @@ function createEntityCache(maxSize = 1000) {
   };
 }
 
+function isValidSqliteHeader(filePath) {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(16);
+    fs.readSync(fd, buf, 0, 16, 0);
+    fs.closeSync(fd);
+    return buf.toString('utf8', 0, 15) === 'SQLite format 3';
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Locate the latest healthy database backup to prevent silent wipe on corruption/0-byte events
+ */
+function findLatestHealthyBackup(dbPath) {
+  try {
+    const homedir = os.homedir ? os.homedir() : process.env.USERPROFILE || '';
+    const searchDirs = [
+      path.join(path.dirname(dbPath), 'backup'),
+      path.join(path.dirname(path.dirname(dbPath)), 'backup'),
+      path.join(homedir, 'Documents', 'LIS', 'backup'),
+      path.join(path.dirname(dbPath), '..', 'backup')
+    ];
+    for (const bDir of searchDirs) {
+      if (!fs.existsSync(bDir)) continue;
+      const files = fs.readdirSync(bDir)
+        .filter(f => (f.startsWith('backup_db_') && f.endsWith('.db')) || (f.startsWith('lis-backup-') && f.endsWith('.db')))
+        .map(f => {
+          const full = path.join(bDir, f);
+          try {
+            const st = fs.statSync(full);
+            return { path: full, size: st.size, mtime: st.mtimeMs };
+          } catch (_) { return null; }
+        })
+        .filter(c => c && c.size > 4096 && isValidSqliteHeader(c.path))
+        .sort((a, b) => b.mtime - a.mtime);
+      if (files.length > 0) return files[0].path;
+    }
+  } catch (_) {}
+  return null;
+}
+
 /**
  * Create a better-sqlite3 backed adapter
  */
@@ -165,7 +209,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
   try {
     sqlite = openSqlite();
   } catch (openErr) {
-    console.error(`[sqliteDb] Failed to open ${dbPath} via better-sqlite3: ${openErr.message}. Quarantining and creating fresh DB...`);
+    console.error(`[sqliteDb] Failed to open ${dbPath} via better-sqlite3: ${openErr.message}. Checking for healthy backups...`);
     try {
       if (fs.existsSync(dbPath)) {
         const corruptDest = `${dbPath}.corrupt.${Date.now()}`;
@@ -185,7 +229,23 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         try { fs.unlinkSync(`${dbPath}-shm`); } catch (_) {}
       }
     } catch (_) {}
-    sqlite = openSqlite();
+
+    // Auto-restore from backup if available
+    const healthyBackup = findLatestHealthyBackup(dbPath);
+    if (healthyBackup) {
+      console.warn(`[sqliteDb] Restoring database from healthy backup: ${healthyBackup}`);
+      try {
+        fs.copyFileSync(healthyBackup, dbPath);
+        sqlite = openSqlite();
+        console.log(`[sqliteDb] Successfully restored and opened database from backup: ${healthyBackup}`);
+      } catch (restoreErr) {
+        console.error(`[sqliteDb] Failed to restore from backup ${healthyBackup}: ${restoreErr.message}. Creating fresh DB...`);
+        sqlite = openSqlite();
+      }
+    } else {
+      console.warn(`[sqliteDb] No healthy backup found for auto-recovery. Creating fresh DB...`);
+      sqlite = openSqlite();
+    }
   }
 
   sqlite.exec(`
@@ -1040,15 +1100,17 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       patientCache.delete(id);
       stmts.deletePatientById.run(id);
     },
-    savePatients(patients) {
+    savePatients(patients, opts = {}) {
       const arr = Array.isArray(patients) ? patients : [];
       cachedPatientsList = null;
       patientCache.clear();
       sqlite.transaction(() => {
-        const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
-        const existing = sqlite.prepare('SELECT id FROM patients').all();
-        for (const row of existing) {
-          if (!incomingIds.has(row.id)) stmts.deletePatientById.run(row.id);
+        if (opts && opts.replace) {
+          const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
+          const existing = sqlite.prepare('SELECT id FROM patients').all();
+          for (const row of existing) {
+            if (!incomingIds.has(row.id)) stmts.deletePatientById.run(row.id);
+          }
         }
         for (const p of arr) {
           if (!p || !p.id) continue;
@@ -1149,15 +1211,17 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       testCache.delete(id);
       stmts.deleteTestById.run(id);
     },
-    saveTests(tests) {
+    saveTests(tests, opts = {}) {
       const arr = Array.isArray(tests) ? tests : [];
       cachedTestsList = null;
       testCache.clear();
       sqlite.transaction(() => {
-        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
-        const existing = sqlite.prepare('SELECT id FROM tests').all();
-        for (const row of existing) {
-          if (!incomingIds.has(row.id)) stmts.deleteTestById.run(row.id);
+        if (opts && opts.replace) {
+          const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+          const existing = sqlite.prepare('SELECT id FROM tests').all();
+          for (const row of existing) {
+            if (!incomingIds.has(row.id)) stmts.deleteTestById.run(row.id);
+          }
         }
         for (const t of arr) {
           if (!t || !t.id) continue;
@@ -1341,8 +1405,8 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       cachedCounters = null;
       cachedSettings = null;
       sqlite.transaction(() => {
-        if (Array.isArray(data.patients)) this.savePatients(data.patients);
-        if (Array.isArray(data.tests)) this.saveTests(data.tests);
+        if (Array.isArray(data.patients)) this.savePatients(data.patients, { replace: true });
+        if (Array.isArray(data.tests)) this.saveTests(data.tests, { replace: true });
         if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
         if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
         if (data.settings && typeof data.settings === 'object') {
@@ -2767,7 +2831,7 @@ function createSqlJsDb(SQL, dbPath) {
         throw new Error('Database integrity check failed: ' + (checkRes && checkRes[0] && checkRes[0].values ? JSON.stringify(checkRes[0].values) : 'malformed'));
       }
     } catch (e) {
-      console.warn('[sqliteDb] Failed to load existing .db via sql.js, quarantining and creating fresh database:', e.message);
+      console.warn('[sqliteDb] Failed to load existing .db via sql.js:', e.message);
       try {
         if (fs.existsSync(dbPath)) {
           fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
@@ -2779,7 +2843,31 @@ function createSqlJsDb(SQL, dbPath) {
           fs.unlinkSync(`${dbPath}-shm`);
         }
       } catch (_) {}
-      sqlite = new SQL.Database();
+
+      // Auto-recover from healthy backup if available to prevent silent data wipe
+      const healthyBackup = findLatestHealthyBackup(dbPath);
+      let restored = false;
+      if (healthyBackup) {
+        console.warn(`[sqliteDb sql.js] Attempting auto-recovery from latest healthy backup: ${healthyBackup}`);
+        try {
+          fs.copyFileSync(healthyBackup, dbPath);
+          const restoredBuffer = fs.readFileSync(dbPath);
+          sqlite = new SQL.Database(restoredBuffer);
+          const checkRes = sqlite.exec("PRAGMA quick_check;");
+          if (checkRes && checkRes[0] && checkRes[0].values && checkRes[0].values[0] && checkRes[0].values[0][0] === 'ok') {
+            console.log(`[sqliteDb sql.js] Successfully auto-recovered database from ${healthyBackup} (${restoredBuffer.length} bytes)`);
+            restored = true;
+          } else {
+            console.warn(`[sqliteDb sql.js] Restored backup failed quick_check, falling back to fresh DB.`);
+          }
+        } catch (restoreErr) {
+          console.error(`[sqliteDb sql.js] Failed to restore from backup ${healthyBackup}:`, restoreErr.message);
+        }
+      }
+      if (!restored) {
+        console.warn('[sqliteDb sql.js] No viable backup found for auto-recovery. Creating fresh database.');
+        sqlite = new SQL.Database();
+      }
     }
   } else {
     sqlite = new SQL.Database();
@@ -3299,19 +3387,52 @@ function createSqlJsDb(SQL, dbPath) {
     try {
       const data = sqlite.export();
       const buf = Buffer.from(data);
+      if (!buf || buf.length === 0) {
+        console.warn('[sqliteDb sql.js] Warning: exported buffer is empty, skipping flush to protect existing database.');
+        return;
+      }
       const tmp = dbPath + '.tmp';
 
       // Ensure directory exists
       try { fs.mkdirSync(path.dirname(dbPath), { recursive: true }); } catch (_) {}
 
-      // Write to temp file then rename atomically
+      // Step 1: Write to temporary file first (atomic staging)
+      // If writing to .tmp fails (e.g. ENOSPC disk full), NEVER touch dbPath!
       try {
         fs.writeFileSync(tmp, buf);
+      } catch (writeErr) {
+        try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (_) {}
+        console.error('[sqliteDb sql.js] CRITICAL: Failed to write to temporary file (e.g. ENOSPC disk full). Original database left 100% intact:', writeErr.message);
+        return;
+      }
+
+      // Step 2: Verify tmp file integrity before replacing live database
+      try {
+        const tmpStat = fs.statSync(tmp);
+        if (tmpStat.size !== buf.length || tmpStat.size === 0) {
+          try { fs.unlinkSync(tmp); } catch (_) {}
+          console.error('[sqliteDb sql.js] CRITICAL: Temp file size mismatch or 0 bytes. Aborting replace to protect live database.');
+          return;
+        }
+      } catch (statErr) {
+        try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (_) {}
+        console.error('[sqliteDb sql.js] CRITICAL: Could not verify temp file. Aborting replace to protect live database:', statErr.message);
+        return;
+      }
+
+      // Step 3: Replace live database atomically
+      try {
         fs.renameSync(tmp, dbPath);
       } catch (renameErr) {
-        // Fallback for Windows file locking issues during rename
-        fs.writeFileSync(dbPath, buf);
-        try { fs.unlinkSync(tmp); } catch (_) {}
+        // Fallback for Windows file locking issues during rename:
+        // Use copyFileSync only from the VERIFIED non-empty tmp file, then unlink tmp
+        try {
+          fs.copyFileSync(tmp, dbPath);
+          fs.unlinkSync(tmp);
+        } catch (copyErr) {
+          console.error('[sqliteDb sql.js] CRITICAL: Could not rename or copy verified temp file to dbPath:', copyErr.message);
+          return;
+        }
       }
 
       // Clean up any stale -wal or -shm files from prior better-sqlite3 sessions
@@ -3319,17 +3440,6 @@ function createSqlJsDb(SQL, dbPath) {
         if (fs.existsSync(`${dbPath}-wal`)) fs.unlinkSync(`${dbPath}-wal`);
         if (fs.existsSync(`${dbPath}-shm`)) fs.unlinkSync(`${dbPath}-shm`);
       } catch (_) {}
-
-      // Verify file was written and is not empty
-      try {
-        const st = fs.statSync(dbPath);
-        if (st.size === 0 && buf.length > 0) {
-          console.error('[sqliteDb sql.js] CRITICAL: DB file is 0 bytes after flush! Rewriting directly...');
-          fs.writeFileSync(dbPath, buf);
-        }
-      } catch (statErr) {
-        console.error('[sqliteDb sql.js] Flush verification warning:', statErr.message);
-      }
     } catch (err) {
       console.error('[sqliteDb sql.js] CRITICAL: Failed to flush database to disk:', err && err.message ? err.message : err);
     }
@@ -3523,16 +3633,18 @@ function createSqlJsDb(SQL, dbPath) {
       persist();
     },
 
-    savePatients(patients) {
+    savePatients(patients, opts = {}) {
       const arr = Array.isArray(patients) ? patients : [];
       cachedPatientsList = null;
       patientCache.clear();
       sqlite.run('BEGIN TRANSACTION;');
       try {
-        const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
-        const existing = queryAll('SELECT id FROM patients');
-        for (const row of existing) {
-          if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM patients WHERE id = ?', [row.id]);
+        if (opts && opts.replace) {
+          const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
+          const existing = queryAll('SELECT id FROM patients');
+          for (const row of existing) {
+            if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM patients WHERE id = ?', [row.id]);
+          }
         }
         for (const p of arr) {
           if (!p || !p.id) continue;
@@ -3644,16 +3756,18 @@ function createSqlJsDb(SQL, dbPath) {
       persist();
     },
 
-    saveTests(tests) {
+    saveTests(tests, opts = {}) {
       const arr = Array.isArray(tests) ? tests : [];
       cachedTestsList = null;
       testCache.clear();
       sqlite.run('BEGIN TRANSACTION;');
       try {
-        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
-        const existing = queryAll('SELECT id FROM tests');
-        for (const row of existing) {
-          if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM tests WHERE id = ?', [row.id]);
+        if (opts && opts.replace) {
+          const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+          const existing = queryAll('SELECT id FROM tests');
+          for (const row of existing) {
+            if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM tests WHERE id = ?', [row.id]);
+          }
         }
         for (const t of arr) {
           if (!t || !t.id) continue;
@@ -3872,8 +3986,8 @@ function createSqlJsDb(SQL, dbPath) {
 
     write(data) {
       if (!data || typeof data !== 'object') return;
-      if (Array.isArray(data.patients)) this.savePatients(data.patients);
-      if (Array.isArray(data.tests)) this.saveTests(data.tests);
+      if (Array.isArray(data.patients)) this.savePatients(data.patients, { replace: true });
+      if (Array.isArray(data.tests)) this.saveTests(data.tests, { replace: true });
       if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
       if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
       if (data.settings && typeof data.settings === 'object') {
@@ -5245,7 +5359,7 @@ function createDb(dbPath, opts = {}) {
     countPatients() { return underlyingDb && underlyingDb.countPatients ? underlyingDb.countPatients() : (underlyingDb ? underlyingDb.getPatients().length : 0); },
     upsertPatient(p) { if (underlyingDb) underlyingDb.upsertPatient(p); else readyPromise.then(d => d.upsertPatient(p)); },
     deletePatient(id) { if (underlyingDb) underlyingDb.deletePatient(id); else readyPromise.then(d => d.deletePatient(id)); },
-    savePatients(p) { if (underlyingDb) underlyingDb.savePatients(p); else readyPromise.then(d => d.savePatients(p)); },
+    savePatients(p, opts) { if (underlyingDb) underlyingDb.savePatients(p, opts); else readyPromise.then(d => d.savePatients(p, opts)); },
     getTests() { return underlyingDb ? underlyingDb.getTests() : []; },
     getTestById(id) { return underlyingDb ? underlyingDb.getTestById(id) : null; },
     getTestByTestId(testId) { return underlyingDb && underlyingDb.getTestByTestId ? underlyingDb.getTestByTestId(testId) : null; },
@@ -5253,7 +5367,7 @@ function createDb(dbPath, opts = {}) {
     countTests(filter) { return underlyingDb && underlyingDb.countTests ? underlyingDb.countTests(filter) : (underlyingDb ? underlyingDb.getTests().length : 0); },
     upsertTest(t) { if (underlyingDb) underlyingDb.upsertTest(t); else readyPromise.then(d => d.upsertTest(t)); },
     deleteTest(id) { if (underlyingDb) underlyingDb.deleteTest(id); else readyPromise.then(d => d.deleteTest(id)); },
-    saveTests(t) { if (underlyingDb) underlyingDb.saveTests(t); else readyPromise.then(d => d.saveTests(t)); },
+    saveTests(t, opts) { if (underlyingDb) underlyingDb.saveTests(t, opts); else readyPromise.then(d => d.saveTests(t, opts)); },
     getUsers() { return underlyingDb ? underlyingDb.getUsers() : []; },
     getUserById(id) { return underlyingDb ? underlyingDb.getUserById(id) : null; },
     getUserByEmail(email) { return underlyingDb ? underlyingDb.getUserByEmail(email) : null; },
@@ -5427,5 +5541,6 @@ function createDb(dbPath, opts = {}) {
 module.exports = {
   createDb,
   initDb,
+  findLatestHealthyBackup,
   SCHEMA_VERSION
 };

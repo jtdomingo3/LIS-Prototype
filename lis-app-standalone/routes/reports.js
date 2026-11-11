@@ -15,6 +15,7 @@ const { logReportError } = require('../lib/reportLogger');
 const reportGenerator = require('../lib/reportGenerator');
 const { getResultTemplate, isDoctorVisitTest } = require('../lib/templateResolver');
 const { sanitizeTestSignatures } = require('../lib/signatureResolver');
+const { toManilaDateString } = require('../lib/dateHelper');
 
 // user reports directory (pre-generated PDFs written here)
 const userReportsDir = reportGenerator.reportsDir;
@@ -215,7 +216,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
         const filtered = testsForNav.filter(tn => {
           if (fp && (tn.patientName || '') !== fp) return false;
           if (ft && (tn.testType || '') !== ft) return false;
-          if (fd) { const d = tn.testDate ? new Date(tn.testDate).toISOString().slice(0,10) : ''; if (d !== fd) return false; }
+          if (fd) { const d = tn.testDate ? toManilaDateString(tn.testDate) : (tn.createdAt ? toManilaDateString(tn.createdAt) : ''); if (d !== fd) return false; }
           return true;
         });
         const ci = filtered.findIndex(tn => String(tn.id) === String(test.id || test._id));
@@ -966,7 +967,7 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
       previewRows.push({
         testId: t.testId || t.id || t._id || '',
         testType: t.testType || t.template || '',
-        date: t.testDate ? new Date(t.testDate).toISOString().slice(0,10) : (t.createdAt ? new Date(t.createdAt).toISOString().slice(0,10) : ''),
+        date: t.testDate ? toManilaDateString(t.testDate) : (t.createdAt ? toManilaDateString(t.createdAt) : ''),
         time: t.testDate ? new Date(t.testDate).toISOString().slice(11,19) : '',
         patientId: p ? (p.patientId || p.patientCode || '') : '',
         firstName: p ? (p.firstName || '') : '',
@@ -1052,10 +1053,10 @@ function buildPatientTestsHelper(allTests) {
         return true;
       });
     } else if (patient.createdAt) {
-      const regDay = new Date(patient.createdAt).toISOString().slice(0, 10);
+      const regDay = toManilaDateString(patient.createdAt);
       const dayTests = patientTests.filter(t => {
         const d = t.testDate || t.createdAt;
-        return d && new Date(d).toISOString().slice(0, 10) === regDay;
+        return d && toManilaDateString(d) === regDay;
       });
       if (dayTests.length) matchedTests = dayTests;
     }

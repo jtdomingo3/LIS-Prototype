@@ -13,8 +13,15 @@
 !macro customInstall
   ; $INSTDIR is the installation directory
   SetOutPath "$INSTDIR"
-  ; If bundled installer-resources exist, copy them to the install dir
-  CopyFiles /SILENT "$INSTDIR\installer-resources\*" "$INSTDIR\"
+  ; Never overwrite an existing clinical database during upgrades
+  IfFileExists "$INSTDIR\lis-data.db" skip_seed_db
+  IfFileExists "$INSTDIR\installer-resources\lis-data.db" 0 skip_seed_db
+    CopyFiles /SILENT "$INSTDIR\installer-resources\lis-data.db" "$INSTDIR\lis-data.db"
+  skip_seed_db:
+  ; Copy non-database resources (tools, scripts, helper executables)
+  CopyFiles /SILENT "$INSTDIR\installer-resources\*.exe" "$INSTDIR\"
+  CopyFiles /SILENT "$INSTDIR\installer-resources\*.bat" "$INSTDIR\"
+  CopyFiles /SILENT "$INSTDIR\installer-resources\*.cmd" "$INSTDIR\"
 !macroend
 
 !macro customUnInstall

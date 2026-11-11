@@ -279,14 +279,23 @@ class OperationQueue {
             const it = items[i];
             if (!it) continue;
             try {
-              if (it.id === oldId) { it.id = newId; collChanged = true; }
+              if (it.id === oldId) {
+                if (ds.db) {
+                  if (name === 'patients' && ds.db.deletePatient) ds.db.deletePatient(oldId);
+                  else if (name === 'tests' && ds.db.deleteTest) ds.db.deleteTest(oldId);
+                  else if (name === 'users' && ds.db.deleteUser) ds.db.deleteUser(oldId);
+                  else if (name === 'templates' && ds.db.deleteTemplate) ds.db.deleteTemplate(oldId);
+                }
+                it.id = newId;
+                collChanged = true;
+              }
               // For tests, update patient references
               if (name === 'tests' && it.patient === oldId) { it.patient = newId; collChanged = true; }
               // For patients, there may be fields referencing patientCode — leave as is
             } catch (e) {}
           }
           if (collChanged) {
-            try { ds.setCollection(name, items); } catch (e) {}
+            try { ds.setCollection(name, items, { replace: true }); } catch (e) {}
             changed = true;
           }
         };

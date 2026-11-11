@@ -9,6 +9,23 @@ class DataStore {
     const homedir = (os.homedir ? os.homedir() : process.env.USERPROFILE || '');
     const preferred = path.join(homedir, 'Documents', 'LIS', 'app-sync');
     const alt = path.join(homedir, 'Documents', 'LIS', 'app_sync');
+    
+    // Directory migration safety: if preferred DB is missing/empty and alt DB exists with data, migrate it
+    try {
+      if (!fs.existsSync(preferred)) fs.mkdirSync(preferred, { recursive: true });
+      const preferredDbFile = path.join(preferred, 'lis-data.db');
+      const altDbFile = path.join(alt, 'lis-data.db');
+      const preferredStat = fs.existsSync(preferredDbFile) ? fs.statSync(preferredDbFile) : null;
+      const altStat = fs.existsSync(altDbFile) ? fs.statSync(altDbFile) : null;
+
+      if ((!preferredStat || preferredStat.size <= 4096) && altStat && altStat.size > 4096) {
+        console.log(`[DataStore] Migrating legacy app_sync database (${altStat.size} bytes) to app-sync (${preferredStat ? preferredStat.size : 0} bytes)...`);
+        fs.copyFileSync(altDbFile, preferredDbFile);
+      }
+    } catch (migErr) {
+      console.warn('[DataStore] Legacy directory migration check warning:', migErr && migErr.message);
+    }
+
     if (!baseDir) {
       if (fs.existsSync(preferred)) baseDir = preferred;
       else if (fs.existsSync(alt)) baseDir = alt;
@@ -141,11 +158,11 @@ class DataStore {
 
   setCollection(name, items, opts = {}) {
     if (!name) return;
-    if (name === 'patients') this.db.savePatients(items);
-    else if (name === 'tests') this.db.saveTests(items);
-    else if (name === 'users') this.db.saveUsers(items);
-    else if (name === 'templates') this.db.saveTemplates(items);
-    else if (name === 'counters') this.db.saveCounters(items);
+    if (name === 'patients') this.db.savePatients(items, opts);
+    else if (name === 'tests') this.db.saveTests(items, opts);
+    else if (name === 'users') this.db.saveUsers(items, opts);
+    else if (name === 'templates') this.db.saveTemplates(items, opts);
+    else if (name === 'counters') this.db.saveCounters(items, opts);
     else if (name === 'inventory' && Array.isArray(items)) {
       if (opts && opts.replace && this.db.getInventory) {
         const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));

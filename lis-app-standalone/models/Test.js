@@ -327,7 +327,7 @@ class Test {
         const index = tests.findIndex(t => t.id === existing.id);
         if (index >= 0) {
           tests.splice(index, 1);
-          global.db.saveTests(tests);
+          global.db.saveTests(tests, { replace: true });
         }
       }
       return new Test(existing);

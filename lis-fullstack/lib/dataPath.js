@@ -157,10 +157,19 @@ function getDataDir() {
     return _cachedDataDir;
   }
 
-  // development mode: files live in project root (../ relative to this file)
-  const devDir = path.join(__dirname, '..');
-  console.log('[dataPath] development mode, using', devDir);
-  _cachedDataDir = devDir;
+  // If isolated development mode is explicitly requested (e.g. CI or unit tests), use project root
+  if (process.env.LIS_DEV_ISOLATED === '1') {
+    const devDir = path.join(__dirname, '..');
+    console.log('[dataPath] isolated development mode requested (LIS_DEV_ISOLATED=1), using', devDir);
+    _cachedDataDir = devDir;
+    return _cachedDataDir;
+  }
+
+  // Default canonical data location: Documents/LIS/data (unifies dev, PM2, and packaged modes)
+  const documentsLisDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+  try { fs.mkdirSync(documentsLisDir, { recursive: true }); } catch (_) {}
+  console.log('[dataPath] using canonical Documents/LIS/data directory', documentsLisDir);
+  _cachedDataDir = documentsLisDir;
   return _cachedDataDir;
 }
 

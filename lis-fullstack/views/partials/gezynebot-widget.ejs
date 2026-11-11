@@ -865,10 +865,13 @@ window.handleWidgetChipClick = function(btn) {
         sendMessage(overrideText);
     };
 
-    // Check RAG Microservice Health
+    // Check RAG Microservice Health (only when widget is active to save bandwidth and prevent log bloat)
     async function checkWidgetRagStatus() {
+        const p = document.getElementById('gezynebot-widget-panel');
+        if (p && !p.classList.contains('active')) return;
         try {
             const res = await fetch('/chatbot/api/rag-status');
+            if (!res.ok) return;
             const data = await res.json();
             const badge = document.getElementById('widget-rag-badge');
             const text = document.getElementById('widget-rag-text');
@@ -884,8 +887,7 @@ window.handleWidgetChipClick = function(btn) {
             }
         } catch (_) {}
     }
-    checkWidgetRagStatus();
-    setInterval(checkWidgetRagStatus, 15000);
+    setInterval(checkWidgetRagStatus, 120000);
 
     // Toggle panel open/close
     function togglePanel() {
@@ -893,6 +895,8 @@ window.handleWidgetChipClick = function(btn) {
         if (isOpen) {
             panel.classList.remove('active');
         } else {
+            panel.classList.add('active');
+            checkWidgetRagStatus();
             panel.classList.add('active');
             checkWidgetRagStatus();
             input.focus();

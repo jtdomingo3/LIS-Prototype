@@ -10,6 +10,7 @@ const path = require('path');
 const multer = require('multer');
 const os = require('os');
 const packageHelper = require('../lib/packageHelper');
+const { toManilaDateString } = require('../lib/dateHelper');
 
 // multer for handling multipart/form-data file uploads in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -434,7 +435,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 10;
+    const limit = parseInt(req.query.limit) || 25;
     const skip = (page - 1) * limit;
 
     const searchQuery = req.query.search || '';
@@ -534,12 +535,12 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
-    // Date filter (match testDate or createdAt YYYY-MM-DD)
+    // Date filter (match testDate or createdAt YYYY-MM-DD in Manila UTC+8)
     if (dateFilter) {
       const df = String(dateFilter);
       allTests = allTests.filter(t => {
         const dt = t.testDate || t.createdAt || null;
-        try { return dt ? new Date(dt).toISOString().slice(0,10) === df : false; } catch (e) { return false; }
+        try { return dt ? toManilaDateString(dt) === df : false; } catch (e) { return false; }
       });
     }
 

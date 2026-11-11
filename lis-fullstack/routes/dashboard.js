@@ -3,6 +3,7 @@ const router = express.Router();
 const Test = require('../models/Test');
 const Patient = require('../models/Patient');
 const { requireAuth, getUserHomeRoute } = require('../middleware/auth');
+const { toManilaDateString, isSameManilaDay } = require('../lib/dateHelper');
 
 // GET /dashboard - Dashboard page
 router.get('/', requireAuth, async (req, res) => {
@@ -24,9 +25,7 @@ router.get('/', requireAuth, async (req, res) => {
 
   // selectedDate parsed below; default to today when not provided
   let selectedDate = null;
-  const isSameDay = (d1, d2) => {
-    try { return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate(); } catch (e) { return false; }
-  };
+  const isSameDay = (d1, d2) => isSameManilaDay(d1, d2);
 
   // parse optional selected date from query (supports YYYY-MM-DD, 'today', 'yesterday')
   try {
@@ -102,15 +101,15 @@ router.get('/', requireAuth, async (req, res) => {
               xrayMonth += xray;
             }
 
-            // Daily trend grouping (YYYY-MM-DD)
-            const dKey = ts.toISOString().slice(0, 10);
+            // Daily trend grouping (YYYY-MM-DD in Manila UTC+8)
+            const dKey = toManilaDateString(ts);
             if (!daysMap[dKey]) daysMap[dKey] = { total: 0, clinical: 0, xray: 0 };
             daysMap[dKey].total += entryTotal;
             daysMap[dKey].clinical += clin;
             daysMap[dKey].xray += xray;
 
             // Monthly trend grouping (YYYY-MM)
-            const mKey = ts.toISOString().slice(0, 7);
+            const mKey = dKey ? dKey.slice(0, 7) : ts.toISOString().slice(0, 7);
             if (!monthsMap[mKey]) monthsMap[mKey] = { total: 0, clinical: 0, xray: 0 };
             monthsMap[mKey].total += entryTotal;
             monthsMap[mKey].clinical += clin;
@@ -141,7 +140,7 @@ router.get('/', requireAuth, async (req, res) => {
   for (let i = 13; i >= 0; i--) {
     const d = new Date(selectedStart);
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = toManilaDateString(d);
     const label = (d.getMonth() + 1) + '/' + d.getDate();
     const data = daysMap[key] || { total: 0, clinical: 0, xray: 0 };
     salesTrendDaily.push({ label, total: data.total, clinical: data.clinical, xray: data.xray });
@@ -374,7 +373,7 @@ router.get('/', requireAuth, async (req, res) => {
     for (let i = 13; i >= 0; i--) {
       const d = new Date(selectedStart);
       d.setDate(d.getDate() - i);
-      const dKey = d.toISOString().slice(0, 10);
+      const dKey = toManilaDateString(d);
       const label = (d.getMonth() + 1) + '/' + d.getDate();
       workloadDaysMap[dKey] = { label, date: dKey, pending: 0, inProgress: 0, completed: 0, released: 0, total: 0 };
     }
@@ -385,8 +384,8 @@ router.get('/', requireAuth, async (req, res) => {
         if (!created || created > selectedEnd) continue;
         totalTestsCount++;
 
-        // Workload trend grouping (last 14 days)
-        const dKey = created.toISOString().slice(0, 10);
+        // Workload trend grouping (last 14 days in Manila UTC+8)
+        const dKey = toManilaDateString(created);
         if (workloadDaysMap[dKey]) {
           workloadDaysMap[dKey].total++;
           const st = (t.status || '').toLowerCase();

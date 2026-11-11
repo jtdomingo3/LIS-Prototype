@@ -129,6 +129,15 @@ function performBackup(destDir) {
   const dest = path.join(dir, `backup_${ts}.json`);
   const data = global.db ? global.db.read() : {};
   fs.writeFileSync(dest, JSON.stringify(data, null, 2), 'utf8');
+
+  // Trigger automated backup retention and disk hygiene
+  try {
+    const { runDiskHygiene } = require('../lib/diskCleaner');
+    runDiskHygiene({ backupDir: dir });
+  } catch (cleanErr) {
+    console.warn('[settings] Auto-hygiene notice:', cleanErr.message);
+  }
+
   return dest;
 }
 

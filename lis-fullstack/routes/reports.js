@@ -15,6 +15,7 @@ const { logReportError } = require('../lib/reportLogger');
 const reportGenerator = require('../lib/reportGenerator');
 const { getResultTemplate, isDoctorVisitTest } = require('../lib/templateResolver');
 const { sanitizeTestSignatures } = require('../lib/signatureResolver');
+const { toManilaDateString } = require('../lib/dateHelper');
 
 // user reports directory (pre-generated PDFs written here)
 const userReportsDir = reportGenerator.reportsDir;
@@ -215,7 +216,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
         const filtered = testsForNav.filter(tn => {
           if (fp && (tn.patientName || '') !== fp) return false;
           if (ft && (tn.testType || '') !== ft) return false;
-          if (fd) { const d = tn.testDate ? new Date(tn.testDate).toISOString().slice(0,10) : ''; if (d !== fd) return false; }
+          if (fd) { const d = tn.testDate ? toManilaDateString(tn.testDate) : (tn.createdAt ? toManilaDateString(tn.createdAt) : ''); if (d !== fd) return false; }
           return true;
         });
         const ci = filtered.findIndex(tn => String(tn.id) === String(test.id || test._id));
@@ -223,7 +224,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
           prevId = ci > 0 ? filtered[ci - 1].id : null;
           nextId = ci < filtered.length - 1 ? filtered[ci + 1].id : null;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const qparts = [];
@@ -292,7 +293,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       return res.redirect('/reports');
     }
     const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
-    
+
     // Render the matching template view under reports/results
     // allow embedding without layout when requested (used by preview iframe)
     const useLayout = req.query.embedded ? false : 'print';
@@ -415,26 +416,26 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
     res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all', formatMMDDYYYY, formatMMDDYY: formatMMDDYYYY, formatDate: formatMMDDYYYY }, (err, renderedHtml) => {
-        if (err) {
-          console.error('Error rendering result template for print:', err);
+      if (err) {
+        console.error('Error rendering result template for print:', err);
+        return res.status(500).send('Error preparing print preview');
+      }
+
+      // Now wrap with the print layout
+      res.render('reports/print', {
+        title: 'Print Report',
+        test: populatedTest,
+        currentDate: formatMMDDYYYY(new Date()),
+        renderedResultHtml: renderedHtml,
+        layout: 'print',
+        suppressPrint: !!req.query.suppressPrint
+      }, (err2, finalHtml) => {
+        if (err2) {
+          console.error('Error rendering print wrapper:', err2);
           return res.status(500).send('Error preparing print preview');
         }
-
-        // Now wrap with the print layout
-        res.render('reports/print', {
-          title: 'Print Report',
-          test: populatedTest,
-          currentDate: formatMMDDYYYY(new Date()),
-          renderedResultHtml: renderedHtml,
-          layout: 'print',
-          suppressPrint: !!req.query.suppressPrint
-        }, (err2, finalHtml) => {
-          if (err2) {
-            console.error('Error rendering print wrapper:', err2);
-            return res.status(500).send('Error preparing print preview');
-          }
-          res.send(finalHtml);
-        });
+        res.send(finalHtml);
+      });
     });
 
   } catch (error) {
@@ -624,7 +625,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       if (dateFrom) q.testDate = Object.assign(q.testDate || {}, { $gte: new Date(dateFrom) });
       if (dateTo) {
         const end = new Date(dateTo);
-        end.setHours(23,59,59,999);
+        end.setHours(23, 59, 59, 999);
         q.testDate = Object.assign(q.testDate || {}, { $lte: end });
       }
     }
@@ -650,7 +651,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       }
       if (dateTo) {
         const end = new Date(dateTo);
-        end.setHours(23,59,59,999);
+        end.setHours(23, 59, 59, 999);
         testsRaw = (testsRaw || []).filter(t => {
           const d = new Date(t.testDate || t.createdAt);
           return d <= end;
@@ -728,7 +729,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       if (v === null || typeof v === 'undefined') return '';
       const s = String(v);
       if (s.includes('"') || s.includes(',') || s.includes('\n')) {
-        return '"' + s.replace(/"/g,'""') + '"';
+        return '"' + s.replace(/"/g, '""') + '"';
       }
       return s;
     }
@@ -766,7 +767,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       lines.push(rowVals);
     }
 
-    const filenameBase = `worksheet_export_${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}`;
+    const filenameBase = `worksheet_export_${(new Date()).toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     const fmt = (format || '').toLowerCase();
 
     if (fmt === 'xlsx') {
@@ -825,7 +826,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     if (fmt === 'excel') {
       // Legacy: send HTML table as .xls which Excel will open
       let html = '<table border="1"><thead><tr>';
-      headers.forEach(h => html += `<th>${String(h).replace(/</g,'&lt;')}</th>`);
+      headers.forEach(h => html += `<th>${String(h).replace(/</g, '&lt;')}</th>`);
       html += '</tr></thead><tbody>';
       for (const r of rows) {
         html += '<tr>';
@@ -857,7 +858,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
           r.requestedByDoctor || ''
         ];
         baseVals.concat(resultVals).concat(personnelVals).forEach(v => {
-          html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g,'&lt;')}</td>`;
+          html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g, '&lt;')}</td>`;
         });
         html += '</tr>';
       }
@@ -917,7 +918,7 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
       }
       if (dateTo) {
         const end = new Date(dateTo);
-        end.setHours(23,59,59,999);
+        end.setHours(23, 59, 59, 999);
         testsRaw = (testsRaw || []).filter(t => {
           const d = new Date(t.testDate || t.createdAt);
           return d <= end;
@@ -966,8 +967,8 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
       previewRows.push({
         testId: t.testId || t.id || t._id || '',
         testType: t.testType || t.template || '',
-        date: t.testDate ? new Date(t.testDate).toISOString().slice(0,10) : (t.createdAt ? new Date(t.createdAt).toISOString().slice(0,10) : ''),
-        time: t.testDate ? new Date(t.testDate).toISOString().slice(11,19) : '',
+        date: t.testDate ? toManilaDateString(t.testDate) : (t.createdAt ? toManilaDateString(t.createdAt) : ''),
+        time: t.testDate ? new Date(t.testDate).toISOString().slice(11, 19) : '',
         patientId: p ? (p.patientId || p.patientCode || '') : '',
         firstName: p ? (p.firstName || '') : '',
         middleName: p ? (p.middleName || '') : '',
@@ -1052,10 +1053,10 @@ function buildPatientTestsHelper(allTests) {
         return true;
       });
     } else if (patient.createdAt) {
-      const regDay = new Date(patient.createdAt).toISOString().slice(0, 10);
+      const regDay = toManilaDateString(patient.createdAt);
       const dayTests = patientTests.filter(t => {
         const d = t.testDate || t.createdAt;
-        return d && new Date(d).toISOString().slice(0, 10) === regDay;
+        return d && toManilaDateString(d) === regDay;
       });
       if (dayTests.length) matchedTests = dayTests;
     }
@@ -1092,7 +1093,7 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
     }
     if (dateTo) {
       const end = new Date(dateTo);
-      end.setHours(23,59,59,999);
+      end.setHours(23, 59, 59, 999);
       patients = (patients || []).filter(p => new Date(p.createdAt) <= end);
     }
     if (company && String(company).trim()) {
@@ -1111,13 +1112,13 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
     const getRequestedTestsForPatient = buildPatientTestsHelper(allTests);
 
     // Build headers for patient export (Created By removed, Requested Tests populated)
-    const headers = ['Patient ID','Patient Code','First Name','Middle Name','Last Name','Full Name','DOB','Age','Age Manual','Sex','Phone','Email','Address','Physician','Requested Tests','Required Areas','Company','PhilHealth Consent','PhilHealth ID','Registration Date','Updated At','Payment History (raw)'];
+    const headers = ['Patient ID', 'Patient Code', 'First Name', 'Middle Name', 'Last Name', 'Full Name', 'DOB', 'Age', 'Age Manual', 'Sex', 'Phone', 'Email', 'Address', 'Physician', 'Requested Tests', 'Required Areas', 'Company', 'PhilHealth Consent', 'PhilHealth ID', 'Registration Date', 'Updated At', 'Payment History (raw)'];
 
     function escapeCsvCell(v) {
       if (v === null || typeof v === 'undefined') return '';
       const s = String(v);
       if (s.includes('"') || s.includes(',') || s.includes('\n')) {
-        return '"' + s.replace(/"/g,'""') + '"';
+        return '"' + s.replace(/"/g, '""') + '"';
       }
       return s;
     }
@@ -1140,7 +1141,7 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
       lines.push(row.map(escapeCsvCell).join(','));
     }
 
-    const filenameBase = `patient_export_${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}`;
+    const filenameBase = `patient_export_${(new Date()).toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     const fmt = (format || '').toLowerCase();
 
     if (fmt === 'xlsx') {
@@ -1176,7 +1177,7 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
 
     if (fmt === 'excel') {
       let html = '<table border="1"><thead><tr>';
-      headers.forEach(h => html += `<th>${String(h).replace(/</g,'&lt;')}</th>`);
+      headers.forEach(h => html += `<th>${String(h).replace(/</g, '&lt;')}</th>`);
       html += '</tr></thead><tbody>';
       for (const p of (patients || [])) {
         const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
@@ -1193,7 +1194,7 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
           pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
           pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
         ];
-        rowVals.forEach(v => { html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g,'&lt;')}</td>`; });
+        rowVals.forEach(v => { html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g, '&lt;')}</td>`; });
         html += '</tr>';
       }
       html += '</tbody></table>';
@@ -1224,7 +1225,7 @@ router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req
     }
     if (dateTo) {
       const end = new Date(dateTo);
-      end.setHours(23,59,59,999);
+      end.setHours(23, 59, 59, 999);
       patients = (patients || []).filter(p => new Date(p.createdAt) <= end);
     }
     if (company && String(company).trim()) {
@@ -1250,7 +1251,7 @@ router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req
         fullName: pj.fullName || '',
         firstName: pj.firstName || '',
         lastName: pj.lastName || '',
-        dob: pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toISOString().slice(0,10) : '',
+        dob: pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toISOString().slice(0, 10) : '',
         age: (pj.age !== undefined && pj.age !== null) ? pj.age : (pj.ageManual || ''),
         sex: pj.sex || pj.gender || '',
         company: pj.company || '',
@@ -1650,7 +1651,7 @@ function safeArray(val) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) return parsed;
-      } catch (_) {}
+      } catch (_) { }
     }
     if (trimmed.includes(';') || trimmed.includes('\n')) {
       return trimmed.split(/[;\n]+/).map(s => s.trim()).filter(Boolean);

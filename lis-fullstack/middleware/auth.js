@@ -61,15 +61,18 @@ const requireAuth = (req, res, next) => {
 
   const isApi = req.xhr ||
                 (req.headers && req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) ||
-                (req.originalUrl && (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/export/')));
+                (req.originalUrl && (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/export/') || req.originalUrl.includes('/api/')));
 
   if (isApi) {
     return res.status(401).json({ success: false, error: 'Authentication required' });
   }
 
-  try {
-    console.warn(`[auth] requireAuth blocked - no session user for ${req.method} ${req.originalUrl}`);
-  } catch (e) {}
+  // Suppress repetitive polling warnings for background status endpoints
+  if (!req.originalUrl.includes('/rag-status')) {
+    try {
+      console.warn(`[auth] requireAuth blocked - no session user for ${req.method} ${req.originalUrl}`);
+    } catch (e) {}
+  }
   req.flash('error_msg', 'Please log in to access this page');
   return res.redirect('/');
 };
