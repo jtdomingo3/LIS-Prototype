@@ -2,79 +2,139 @@
     <!-- Print Stylesheet specifically for Philippine Civil Service Form No. 48 -->
     <style>
         @media print {
-            body {
+            *, *::before, *::after {
+                box-sizing: border-box !important;
+            }
+            html, body {
                 background: white !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                width: 100% !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
-            .sidebar, .header, .top-header, .flash-message, .no-print, .btn, #dtrControls, #dtrKpiBar {
+            .sidebar, .header, .top-header, .flash-message, .no-print, col.no-print, th.no-print, td.no-print, .btn, #dtrControls, #dtrKpiBar {
                 display: none !important;
             }
-            .main-content {
+            .main-content, .dtr-page-wrapper {
                 margin: 0 !important;
                 padding: 0 !important;
                 width: 100% !important;
-            }
-            .dtr-page-wrapper {
-                padding: 0 !important;
-                margin: 0 !important;
+                max-width: 100% !important;
+                box-shadow: none !important;
+                border: none !important;
             }
             .ph-dtr-grid {
                 display: flex !important;
                 flex-direction: row !important;
                 justify-content: space-between !important;
-                gap: 12px !important;
+                gap: 8px !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 flex-wrap: nowrap !important;
+                box-sizing: border-box !important;
+                margin: 0 auto !important;
             }
             .ph-dtr-sheet {
                 display: block !important;
                 box-shadow: none !important;
-                border: 1px solid #000 !important;
-                padding: 6px 8px !important;
+                border: 1.5px solid #000 !important;
+                padding: 5px 6px !important;
                 page-break-inside: avoid !important;
-                width: 48.8% !important;
-                max-width: 48.8% !important;
+                break-inside: avoid !important;
+                width: calc(50% - 4px) !important;
+                max-width: calc(50% - 4px) !important;
                 box-sizing: border-box !important;
+                overflow: hidden !important;
             }
-            #dtrCopy2 {
+            #dtrCopy1, #dtrCopy2 {
                 display: block !important;
             }
             .ph-dtr-table {
-                font-size: 7.2pt !important;
+                width: 100% !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+                border: 1.5px solid #000 !important;
+                font-size: 6.8pt !important;
                 margin-top: 4px !important;
             }
             .ph-dtr-table th, .ph-dtr-table td {
-                padding: 0.5px 2px !important;
+                padding: 0.5px 1px !important;
                 height: 15px !important;
                 line-height: 1.1 !important;
+                text-align: center !important;
+                overflow: hidden !important;
+                white-space: nowrap !important;
+                box-sizing: border-box !important;
             }
+            .ph-dtr-table th {
+                font-size: 6.5pt !important;
+                font-weight: 700 !important;
+            }
+            .ph-dtr-table th.th-sub {
+                font-size: 6.2pt !important;
+            }
+            .col-day { width: 8.5% !important; }
+            .col-amin { width: 15.5% !important; }
+            .col-amout { width: 15.5% !important; }
+            .col-pmin { width: 15.5% !important; }
+            .col-pmout { width: 15.5% !important; }
+            .col-undhr { width: 14.5% !important; }
+            .col-undmin { width: 15% !important; }
             .dashed-row {
                 border-bottom: 1px dashed #000 !important;
             }
-            .dtr-cert-block {
-                margin-top: 6px !important;
+            .dtr-hours-block {
                 font-size: 6.8pt !important;
-                line-height: 1.15 !important;
+                line-height: 1.25 !important;
+                margin-top: 6px !important;
+            }
+            .dtr-cert-block {
+                margin-top: 8px !important;
+                font-size: 6.8pt !important;
+                line-height: 1.2 !important;
             }
             .dtr-cert-p {
                 margin: 0 0 4px 0 !important;
                 text-indent: 14px !important;
+                text-align: justify !important;
+                font-style: italic !important;
             }
             .dtr-sig-emp {
-                margin: 10px auto 0 auto !important;
+                width: 82% !important;
+                margin: 12px auto 0 auto !important;
+                text-align: center !important;
+            }
+            .dtr-sig-line {
+                border-bottom: 1px solid #000000 !important;
+                padding-bottom: 1px !important;
+                font-weight: 800 !important;
+                text-transform: uppercase !important;
+                font-size: 7.2pt !important;
+                overflow: hidden !important;
+                white-space: nowrap !important;
+                text-overflow: ellipsis !important;
+            }
+            .dtr-sig-label {
+                font-size: 6.2pt !important;
+                font-style: italic !important;
+                margin-top: 1px !important;
             }
             .dtr-verify-block {
-                margin-top: 6px !important;
+                margin-top: 8px !important;
+            }
+            .dtr-verify-label {
+                font-style: italic !important;
+                font-size: 6.5pt !important;
             }
             .dtr-sig-incharge {
-                margin: 10px auto 0 auto !important;
+                width: 82% !important;
+                margin: 12px auto 0 auto !important;
+                text-align: center !important;
             }
             @page {
                 size: letter portrait;
-                margin: 0.22in 0.25in;
+                margin: 0.25in 0.25in;
             }
         }
 
@@ -147,6 +207,22 @@
         }
         .dashed-row:hover .action-hover-btn {
             opacity: 1;
+        }
+
+        .dtr-sig-line {
+            border-bottom: 1.5px solid #000000;
+            padding-bottom: 2px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .dtr-sig-label {
+            font-size: 0.74rem;
+            font-style: italic;
+            margin-top: 2px;
+        }
+        .dtr-verify-label {
+            font-style: italic;
+            font-size: 0.78rem;
         }
     </style>
 
@@ -266,7 +342,7 @@
     <div id="dtrGridContainer" class="ph-dtr-grid" style="display: flex; justify-content: center; gap: 24px; width: 100%; box-sizing: border-box;">
         
         <!-- ======================= FORM COPY 1 ======================= -->
-        <div class="ph-dtr-sheet" style="width: 100%; max-width: 540px; box-sizing: border-box;">
+        <div id="dtrCopy1" class="ph-dtr-sheet" style="width: 100%; max-width: 540px; box-sizing: border-box;">
             <!-- Form Header -->
             <div style="font-size: 0.76rem; font-style: italic; margin-bottom: 2px;">
                 Civil Service Form No. 48
@@ -289,17 +365,17 @@
             </div>
 
             <!-- Month & Official Hours Block -->
-            <div style="margin-top: 8px; font-size: 0.82rem; line-height: 1.35;">
+            <div class="dtr-hours-block" style="margin-top: 8px; font-size: 0.82rem; line-height: 1.35;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <div>
                         For the month of <span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 8px;"><%= monthName %></span>, 20<span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 4px;"><%= String(year).slice(-2) %></span>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 3px;">
-                    <div style="width: 48%;">
+                    <div style="width: 38%; white-space: nowrap;">
                         Official hours for arrival<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;and departure
                     </div>
-                    <div style="width: 52%; text-align: right;">
+                    <div style="width: 62%; text-align: right; white-space: nowrap;">
                         Regular Days: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">8:00 AM - 5:00 PM</span><br>
                         Saturdays: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">As scheduled / Off</span>
                     </div>
@@ -308,21 +384,31 @@
 
             <!-- Standard Philippine CSC Form 48 Table -->
             <table class="ph-dtr-table">
+                <colgroup>
+                    <col class="col-day" style="width: 8.5%;">
+                    <col class="col-amin" style="width: 15.5%;">
+                    <col class="col-amout" style="width: 15.5%;">
+                    <col class="col-pmin" style="width: 15.5%;">
+                    <col class="col-pmout" style="width: 15.5%;">
+                    <col class="col-undhr" style="width: 14.5%;">
+                    <col class="col-undmin" style="width: 15%;">
+                    <col class="no-print" style="width: 32px;">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th rowspan="2" class="b-double-r" style="width: 42px;">Days</th>
+                        <th rowspan="2" class="b-double-r col-day">Days</th>
                         <th colspan="2" class="b-double-r">A. M.</th>
                         <th colspan="2" class="b-double-r">P. M.</th>
-                        <th colspan="2" style="width: 90px;">UNDER TIME</th>
-                        <th rowspan="2" class="no-print" style="width: 32px; background: #f8fafc; font-size: 0.7rem; border-left: 1px solid #cbd5e1;">Edit</th>
+                        <th colspan="2">UNDER TIME</th>
+                        <th rowspan="2" class="no-print" style="background: #f8fafc; font-size: 0.7rem; border-left: 1px solid #cbd5e1;">Edit</th>
                     </tr>
                     <tr>
-                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
-                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
-                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
-                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
-                        <th class="b-solid-r" style="width: 45px; font-size: 0.72rem;">Hours</th>
-                        <th style="width: 45px; font-size: 0.72rem;">Minutes</th>
+                        <th class="b-solid-r th-sub col-amin">ARRIVAL</th>
+                        <th class="b-double-r th-sub col-amout">DEPARTURE</th>
+                        <th class="b-solid-r th-sub col-pmin">ARRIVAL</th>
+                        <th class="b-double-r th-sub col-pmout">DEPARTURE</th>
+                        <th class="b-solid-r th-sub col-undhr">Hours</th>
+                        <th class="th-sub col-undmin">Minutes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -434,8 +520,8 @@
 
                     <!-- Total Row -->
                     <tr class="b-solid-t b-solid-b" style="background: #ffffff; font-weight: 700;">
-                        <td colspan="5" class="b-double-r" style="text-align: left; padding-left: 12px; font-weight: 800; letter-spacing: 0.05em;">
-                            TOTAL ....................................................................
+                        <td colspan="5" class="b-double-r" style="text-align: left; padding-left: 8px; font-weight: 800; letter-spacing: 0.05em; overflow: hidden; white-space: nowrap;">
+                            TOTAL <span style="letter-spacing: 1px;">..................</span>
                         </td>
                         <td class="b-solid-r" style="text-align: center; font-weight: 800;">
                             <%= totalUndertimeHours > 0 ? totalUndertimeHours : '' %>
@@ -456,24 +542,24 @@
 
                 <!-- Employee Signature Line -->
                 <div class="dtr-sig-emp" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
-                    <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                    <div class="dtr-sig-line">
                         <%= employee.name %>
                     </div>
-                    <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                    <div class="dtr-sig-label">
                         (Signature of Employee)
                     </div>
                 </div>
 
                 <!-- Verification Block -->
                 <div class="dtr-verify-block" style="margin-top: 18px;">
-                    <div style="font-style: italic; font-size: 0.78rem;">
+                    <div class="dtr-verify-label">
                         Verified as to the prescribed office hours:
                     </div>
                     <div class="dtr-sig-incharge" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
-                        <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                        <div class="dtr-sig-line">
                             <%= employee.department === 'Clinical Laboratory' ? 'Pathologist / Laboratory Director' : 'HR Officer / Head of Clinic' %>
                         </div>
-                        <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                        <div class="dtr-sig-label">
                             In Charge
                         </div>
                     </div>
@@ -505,17 +591,17 @@
             </div>
 
             <!-- Month & Official Hours Block -->
-            <div style="margin-top: 8px; font-size: 0.82rem; line-height: 1.35;">
+            <div class="dtr-hours-block" style="margin-top: 8px; font-size: 0.82rem; line-height: 1.35;">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <div>
                         For the month of <span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 8px;"><%= monthName %></span>, 20<span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 4px;"><%= String(year).slice(-2) %></span>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 3px;">
-                    <div style="width: 48%;">
+                    <div style="width: 38%; white-space: nowrap;">
                         Official hours for arrival<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;and departure
                     </div>
-                    <div style="width: 52%; text-align: right;">
+                    <div style="width: 62%; text-align: right; white-space: nowrap;">
                         Regular Days: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">8:00 AM - 5:00 PM</span><br>
                         Saturdays: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">As scheduled / Off</span>
                     </div>
@@ -524,21 +610,31 @@
 
             <!-- Table Duplicate -->
             <table class="ph-dtr-table">
+                <colgroup>
+                    <col class="col-day" style="width: 8.5%;">
+                    <col class="col-amin" style="width: 15.5%;">
+                    <col class="col-amout" style="width: 15.5%;">
+                    <col class="col-pmin" style="width: 15.5%;">
+                    <col class="col-pmout" style="width: 15.5%;">
+                    <col class="col-undhr" style="width: 14.5%;">
+                    <col class="col-undmin" style="width: 15%;">
+                    <col class="no-print" style="width: 32px;">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th rowspan="2" class="b-double-r" style="width: 42px;">Days</th>
+                        <th rowspan="2" class="b-double-r col-day">Days</th>
                         <th colspan="2" class="b-double-r">A. M.</th>
                         <th colspan="2" class="b-double-r">P. M.</th>
-                        <th colspan="2" style="width: 90px;">UNDER TIME</th>
-                        <th rowspan="2" class="no-print" style="width: 32px; background: #f8fafc; font-size: 0.7rem; border-left: 1px solid #cbd5e1;">Edit</th>
+                        <th colspan="2">UNDER TIME</th>
+                        <th rowspan="2" class="no-print" style="background: #f8fafc; font-size: 0.7rem; border-left: 1px solid #cbd5e1;">Edit</th>
                     </tr>
                     <tr>
-                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
-                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
-                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
-                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
-                        <th class="b-solid-r" style="width: 45px; font-size: 0.72rem;">Hours</th>
-                        <th style="width: 45px; font-size: 0.72rem;">Minutes</th>
+                        <th class="b-solid-r th-sub col-amin">ARRIVAL</th>
+                        <th class="b-double-r th-sub col-amout">DEPARTURE</th>
+                        <th class="b-solid-r th-sub col-pmin">ARRIVAL</th>
+                        <th class="b-double-r th-sub col-pmout">DEPARTURE</th>
+                        <th class="b-solid-r th-sub col-undhr">Hours</th>
+                        <th class="th-sub col-undmin">Minutes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -643,8 +739,8 @@
                     <% }) %>
 
                     <tr class="b-solid-t b-solid-b" style="background: #ffffff; font-weight: 700;">
-                        <td colspan="5" class="b-double-r" style="text-align: left; padding-left: 12px; font-weight: 800; letter-spacing: 0.05em;">
-                            TOTAL ....................................................................
+                        <td colspan="5" class="b-double-r" style="text-align: left; padding-left: 8px; font-weight: 800; letter-spacing: 0.05em; overflow: hidden; white-space: nowrap;">
+                            TOTAL <span style="letter-spacing: 1px;">..................</span>
                         </td>
                         <td class="b-solid-r" style="text-align: center; font-weight: 800;">
                             <%= totalUndertimeHours > 0 ? totalUndertimeHours : '' %>
@@ -664,23 +760,23 @@
                 </p>
 
                 <div class="dtr-sig-emp" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
-                    <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                    <div class="dtr-sig-line">
                         <%= employee.name %>
                     </div>
-                    <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                    <div class="dtr-sig-label">
                         (Signature of Employee)
                     </div>
                 </div>
 
                 <div class="dtr-verify-block" style="margin-top: 18px;">
-                    <div style="font-style: italic; font-size: 0.78rem;">
+                    <div class="dtr-verify-label">
                         Verified as to the prescribed office hours:
                     </div>
                     <div class="dtr-sig-incharge" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
-                        <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                        <div class="dtr-sig-line">
                             <%= employee.department === 'Clinical Laboratory' ? 'Pathologist / Laboratory Director' : 'HR Officer / Head of Clinic' %>
                         </div>
-                        <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                        <div class="dtr-sig-label">
                             In Charge
                         </div>
                     </div>
