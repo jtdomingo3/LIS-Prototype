@@ -4,7 +4,7 @@
  * ============================================================================
  * 
  * End-to-end automated Windows installer compilation pipeline for Server App:
- * 1. Pre-Build Gate: Runs all 25 system tests + security audit (abort on error).
+ * 1. Pre-Build Gate: Runs all 26 system tests + security audit (abort on error).
  * 2. Purge Stale Binaries: Cleans previous laboratory-information-system.exe and setup EXEs.
  * 3. Metadata Stamping: Injects Git commit SHA, branch, v3.1.0, builder entity.
  * 4. Fresh Server pkg Compilation: Builds fresh executable with icon.

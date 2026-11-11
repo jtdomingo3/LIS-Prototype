@@ -25,8 +25,8 @@ function runGate() {
   console.log('======================================================================');
   console.log('Verifying zero regressions and zero security vulnerabilities before compilation...\n');
 
-  // Step 1: Run All 25 System Regression Suites
-  console.log('▶ [Gate 1/2] Executing Master System Test Suites (25 Suites)...');
+  // Step 1: Run All 26 System Regression Suites
+  console.log('▶ [Gate 1/2] Executing Master System Test Suites (26 Suites)...');
   const testRunnerPath = path.join(repoRoot, 'test', 'run-all-system-tests.js');
   const testResult = spawnSync(process.execPath, [testRunnerPath], {
     cwd: repoRoot,
@@ -39,7 +39,7 @@ function runGate() {
     console.error('Setup compilation has been cancelled. Please resolve failing tests before packaging.\n');
     process.exit(1);
   }
-  console.log('✅ [Gate 1/2] All 25 System Test Suites Passed Cleanly (100% Success)!\n');
+  console.log('✅ [Gate 1/2] All 26 System Test Suites Passed Cleanly (100% Success)!\n');
 
   // Step 2: Run Security & OWASP Audit
   console.log('▶ [Gate 2/2] Executing Automated Security & Amazon Inspector Audit...');

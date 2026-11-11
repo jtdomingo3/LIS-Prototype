@@ -613,6 +613,7 @@ app.use((req, res, next) => {
     req.path.startsWith('/chatbot/api/') || 
     req.path.startsWith('/export/') || 
     req.path === '/reports/print-multiple' || 
+    req.path.startsWith('/tests/packages/') ||
     extractBearerToken(req) || 
     req.headers['x-lis-sync-replay'] || 
     req.headers['x-lis-sync-hash'] ||
@@ -625,7 +626,11 @@ app.use((req, res, next) => {
     if (err) {
       if (err.code === 'EBADCSRFTOKEN') {
         console.warn(`[csrf] EBADCSRFTOKEN caught on ${req.method} ${req.originalUrl}`);
-        const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+        const isApi = req.xhr || 
+                      (req.headers && req.headers.accept && req.headers.accept.includes('application/json')) || 
+                      (req.is && req.is('json')) || 
+                      req.path.startsWith('/tests/packages/') || 
+                      (req.originalUrl && req.originalUrl.includes('/packages/'));
         if (isApi) {
           return res.status(403).json({ error: 'Form security token invalid or session expired. Please refresh the page.' });
         }

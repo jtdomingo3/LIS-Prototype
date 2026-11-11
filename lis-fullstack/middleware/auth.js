@@ -61,7 +61,8 @@ const requireAuth = (req, res, next) => {
 
   const isApi = req.xhr ||
                 (req.headers && req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) ||
-                (req.originalUrl && (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/export/') || req.originalUrl.includes('/api/')));
+                (req.is && req.is('json')) ||
+                (req.originalUrl && (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/export/') || req.originalUrl.startsWith('/tests/packages/') || req.originalUrl.includes('/packages/') || req.originalUrl.includes('/api/')));
 
   if (isApi) {
     return res.status(401).json({ success: false, error: 'Authentication required' });

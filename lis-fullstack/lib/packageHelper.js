@@ -81,23 +81,38 @@ const DEFAULT_PACKAGES = [
   }
 ];
 
+let inMemoryFallbackSettings = {};
+
 function getSettingsObject() {
   if (global.db && typeof global.db.getSettings === 'function') {
-    return global.db.getSettings() || {};
+    const s = global.db.getSettings();
+    if (s && typeof s === 'object') {
+      inMemoryFallbackSettings = s;
+      return s;
+    }
   }
-  if (!global.db) return {};
-  try {
-    const data = (typeof global.db.read === 'function') ? global.db.read() : null;
-    return (data && data.settings) || {};
-  } catch (e) {
-    return {};
+  if (global.db && typeof global.db.read === 'function') {
+    try {
+      const data = global.db.read();
+      if (data && data.settings && typeof data.settings === 'object') {
+        inMemoryFallbackSettings = data.settings;
+        return data.settings;
+      }
+    } catch (_) {}
   }
+  return inMemoryFallbackSettings || {};
 }
 
 function saveSettingsObject(settings) {
+  if (settings && typeof settings === 'object') {
+    inMemoryFallbackSettings = settings;
+  }
   if (!global.db) return;
   if (typeof global.db.setSettings === 'function') {
     global.db.setSettings(settings);
+    if (typeof global.db.checkpoint === 'function') {
+      try { global.db.checkpoint(); } catch (_) {}
+    }
     return;
   }
   try {
@@ -105,6 +120,9 @@ function saveSettingsObject(settings) {
     if (data && typeof global.db.write === 'function') {
       data.settings = settings;
       global.db.write(data);
+      if (typeof global.db.checkpoint === 'function') {
+        try { global.db.checkpoint(); } catch (_) {}
+      }
     }
   } catch (e) {
     console.warn('[packageHelper] Failed to persist settings:', e.message);

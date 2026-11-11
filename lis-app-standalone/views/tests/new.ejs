@@ -803,7 +803,8 @@
       </button>
     </div>
 
-    <form id="pkgEditForm" onsubmit="handleSavePackage(event)" style="display: flex; flex-direction: column; overflow: hidden; margin: 0;">
+    <form id="pkgEditForm" method="POST" onsubmit="handleSavePackage(event)" style="display: flex; flex-direction: column; overflow: hidden; margin: 0;">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <input type="hidden" id="editPkgId" name="id" value="" />
       
       <div style="padding: 16px 20px; overflow-y: auto; max-height: calc(90vh - 130px); display: flex; flex-direction: column; gap: 14px;">
@@ -1568,7 +1569,15 @@
     const otherTests = [];
     document.querySelectorAll('.edit-other-cb:checked').forEach(cb => otherTests.push(cb.value));
 
+    // Dynamically retrieve the freshest CSRF token available
+    const activeCsrfToken = (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content)
+                         || (typeof window !== 'undefined' && window.__CSRF_TOKEN__)
+                         || (document.querySelector('input[name="_csrf"]') && document.querySelector('input[name="_csrf"]').value)
+                         || (typeof csrfToken !== 'undefined' ? csrfToken : '')
+                         || '';
+
     const payload = {
+      _csrf: activeCsrfToken,
       id: id || undefined,
       name,
       code,
@@ -1585,15 +1594,32 @@
     };
 
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      };
+      if (activeCsrfToken) {
+        headers['CSRF-Token'] = activeCsrfToken;
+        headers['X-CSRF-Token'] = activeCsrfToken;
+      }
+
       const res = await fetch('/tests/packages/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'CSRF-Token': csrfToken
-        },
+        headers: headers,
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+
+      const contentType = res.headers.get('content-type') || '';
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(res.status === 401 || res.status === 403
+          ? 'Session expired or security token invalid. Please refresh the page.'
+          : (text && text.length < 150 ? text : `Server returned status ${res.status}`));
+      }
       if (data && data.success && data.package) {
         const saved = data.package;
         const idx = testPackagesList.findIndex(p => String(p.id) === String(saved.id));
@@ -1620,15 +1646,39 @@
     if (!id) return;
     if (!confirm('Are you sure you want to delete this test package?')) return;
 
+    const activeCsrfToken = (document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content)
+                         || (typeof window !== 'undefined' && window.__CSRF_TOKEN__)
+                         || (document.querySelector('input[name="_csrf"]') && document.querySelector('input[name="_csrf"]').value)
+                         || (typeof csrfToken !== 'undefined' ? csrfToken : '')
+                         || '';
+
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      };
+      if (activeCsrfToken) {
+        headers['CSRF-Token'] = activeCsrfToken;
+        headers['X-CSRF-Token'] = activeCsrfToken;
+      }
+
       const res = await fetch(`/tests/packages/${encodeURIComponent(id)}/delete`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'CSRF-Token': csrfToken
-        }
+        headers: headers,
+        body: JSON.stringify({ _csrf: activeCsrfToken })
       });
-      const data = await res.json();
+
+      const contentType = res.headers.get('content-type') || '';
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(res.status === 401 || res.status === 403
+          ? 'Session expired or security token invalid. Please refresh the page.'
+          : (text && text.length < 150 ? text : `Server returned status ${res.status}`));
+      }
       if (data && data.success) {
         if (currentActivePackageId === id) {
           clearActivePackage();

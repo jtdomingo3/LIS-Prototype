@@ -163,6 +163,11 @@ const suites = [
     name: 'Settings & GezyneBot Intensive Suite',
     file: 'intensive-settings-gezynebot.test.js',
     scope: 'Facility Settings, SSE, Printer, 60-Day Backup Retention, OpenRouter Encryption, 16-Chapter GezyneBot'
+  },
+  {
+    name: 'Test Packages & Catalog Intensive Suite',
+    file: 'intensive-test-packages.test.js',
+    scope: 'Package Seeding, Custom Package CRUD, SQLite Persistence, Zero HTML-Redirect Guarantees, Dynamic CSRF'
   }
 ];
 

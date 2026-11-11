@@ -606,8 +606,10 @@ router.post('/packages/save', requireAuth, (req, res) => {
       return res.status(403).json({ success: false, error: 'Unauthorized to manage test packages' });
     }
     const pkg = packageHelper.savePackage(req.body);
+    console.log('[packages] Saved test package:', pkg && pkg.name, pkg && pkg.id);
     res.json({ success: true, package: pkg });
   } catch (err) {
+    console.error('[packages] Save package error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -619,8 +621,10 @@ router.post('/packages/:id/delete', requireAuth, (req, res) => {
       return res.status(403).json({ success: false, error: 'Unauthorized to delete test packages' });
     }
     const ok = packageHelper.deletePackage(req.params.id);
+    console.log('[packages] Deleted test package:', req.params.id, ok);
     res.json({ success: ok });
   } catch (err) {
+    console.error('[packages] Delete package error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -717,6 +721,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       templates,
       testPackages: packageHelper.getPackages(false),
       canManagePackages: packageHelper.canUserManagePackages(req.session.user),
+      csrfToken: (res.locals && res.locals.csrfToken) || (req.csrfToken ? req.csrfToken() : ''),
       returnTo
     });
   } catch (error) {
