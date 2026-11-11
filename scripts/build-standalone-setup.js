@@ -26,10 +26,11 @@ function runCommand(command, args, cwd, description) {
   console.log(`  Directory: ${cwd}`);
   console.log(`  Command  : ${command} ${args.join(' ')}`);
 
+  const isNode = command === process.execPath || command === 'node';
   const result = spawnSync(command, args, {
     cwd,
     stdio: 'inherit',
-    shell: true,
+    shell: !isNode,
     env: process.env
   });
 
