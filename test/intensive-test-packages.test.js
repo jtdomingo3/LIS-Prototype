@@ -422,6 +422,22 @@ async function runTestSuite() {
         templateContent.includes('application/json') && templateContent.includes('X-Requested-With'),
         `[${name}] fetch requests must set Accept: application/json and X-Requested-With: XMLHttpRequest`
       );
+      assert.ok(
+        templateContent.includes('window.openConfirm'),
+        `[${name}] handleDeletePackage must use window.openConfirm for custom deletion warning UI`
+      );
+      assert.ok(
+        !templateContent.includes("if (!confirm('Are you sure you want to delete this test package?'))"),
+        `[${name}] handleDeletePackage must not rely on raw browser confirm() modal`
+      );
+      assert.ok(
+        templateContent.includes('id="deletePkgBtn"') && templateContent.includes('class="button btn-danger"'),
+        `[${name}] deletePkgBtn must have class="button btn-danger" for standard button proportions`
+      );
+      assert.ok(
+        templateContent.includes('fa-trash-can'),
+        `[${name}] deletePkgBtn must use modern FA trash-can icon`
+      );
 
       // Compile EJS template
       const compiledFn = ejs.compile(templateContent, { filename: templatePath });
