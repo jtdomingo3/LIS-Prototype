@@ -8,6 +8,66 @@
 %>
 
 <style>
+  @media print {
+    @page {
+      size: letter landscape;
+      margin: 0.35in;
+    }
+    body {
+      background: #fff !important;
+      color: #000 !important;
+      font-size: 8.5pt !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .sidebar, .top-header, .header, .flash-message, .no-print, .btn, .button,
+    .eq-nav-tabs, .eq-stat-grid, .eq-filter-toolbar,
+    #sectionQc, #sectionNeqas,
+    th:last-child, td:last-child,
+    .modal, .drawer {
+      display: none !important;
+    }
+    .main-content, .card, .table-responsive {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      width: 100% !important;
+      overflow: visible !important;
+    }
+    .equipment-print-header {
+      display: block !important;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #009957;
+      padding-bottom: 8px;
+    }
+    .eq-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      font-size: 8pt !important;
+    }
+    .eq-table th, .eq-table td {
+      border: 1px solid #cbd5e1 !important;
+      padding: 4px 6px !important;
+      color: #000 !important;
+    }
+    .eq-table th {
+      background: #f1f5f9 !important;
+      font-weight: 700 !important;
+    }
+    .badge, .badge-operational, .badge-duesoon, .badge-overdue, .badge-outofservice {
+      border: 1px solid #94a3b8 !important;
+      padding: 1px 4px !important;
+      font-size: 7.5pt !important;
+    }
+  }
+  .equipment-print-header {
+    display: none;
+  }
+
   .eq-stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -315,6 +375,9 @@
       <button class="button btn-secondary" onclick="openAlertsModal()">
         <i class="fa fa-bell" style="color: #dc2626;"></i> Upcoming Alerts
       </button>
+      <button type="button" class="button btn-secondary" onclick="window.print()">
+        <i class="fa fa-print"></i> Print Registry
+      </button>
     </div>
 
     <div style="display: flex; gap: 8px; align-items: center;">
@@ -363,6 +426,20 @@
     <button type="button" onclick="resetFilters()" title="Reset Filters" style="height: 38px; padding: 0 14px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; color: #475569; font-size: 0.85em; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: all 0.15s; flex-shrink: 0;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a';" onmouseout="this.style.background='#f1f5f9'; this.style.color='#475569';">
       <i class="fa fa-rotate-left"></i> Reset
     </button>
+  </div>
+
+  <!-- Equipment Master Print Header for Regulatory Inspections -->
+  <div class="equipment-print-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #009957; padding-bottom: 8px; margin-bottom: 12px;">
+      <div>
+        <h2 style="margin: 0; color: #009957; font-size: 16pt; font-weight: 800;">GEZYNE CLINICAL LABORATORY & DIAGNOSTIC IMAGING</h2>
+        <div style="font-size: 9pt; color: #475569; margin-top: 2px;">Equipment Master Registry & Preventive Maintenance Schedule (DOH AO 2021-0037 & CLSI QMS13 Compliant)</div>
+      </div>
+      <div style="text-align: right; font-size: 8.5pt; color: #475569;">
+        <div><strong>Date Generated:</strong> <%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+        <div><strong>Total Equipment:</strong> <%= typeof equipment !== 'undefined' ? equipment.length : 0 %> Units</div>
+      </div>
+    </div>
   </div>
 
   <!-- Equipment Data Table -->

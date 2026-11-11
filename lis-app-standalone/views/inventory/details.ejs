@@ -13,6 +13,65 @@
   const userCanEdit = (typeof canEdit !== 'undefined' && canEdit) || (typeof sessionUser !== 'undefined' && checkInventoryPerm(sessionUser));
 %>
 
+<style>
+  @media print {
+    @page {
+      size: letter portrait;
+      margin: 0.35in;
+    }
+    body {
+      background: #fff !important;
+      color: #000 !important;
+      font-size: 9pt !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .sidebar, .top-header, .header, .flash-message, .no-print, .btn, .button,
+    .stats-container, th:last-child, td:last-child,
+    .modal, #modalReceiveBatch, #modalQuickDeduct, #modalAdjustBatch, #modalDiscardBatch, #modalQcVerify {
+      display: none !important;
+    }
+    .main-content, .card {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      width: 100% !important;
+    }
+    .stockcard-print-header {
+      display: block !important;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #009957;
+      padding-bottom: 8px;
+    }
+    .table, table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      font-size: 8.5pt !important;
+    }
+    th, td {
+      border: 1px solid #cbd5e1 !important;
+      padding: 4px 6px !important;
+      color: #000 !important;
+    }
+    th {
+      background: #f1f5f9 !important;
+      font-weight: 700 !important;
+    }
+    .badge {
+      border: 1px solid #94a3b8 !important;
+      padding: 1px 4px !important;
+      font-size: 7.5pt !important;
+    }
+  }
+  .stockcard-print-header {
+    display: none;
+  }
+</style>
+
 <!-- Top Summary KPIs -->
 <div class="stats-container">
   <div class="stat-card">
@@ -54,6 +113,20 @@
 
 <!-- Main Item Header & Quick Action Buttons -->
 <div class="card" style="margin-bottom: 24px;">
+  <!-- Print Stock Card Header -->
+  <div class="stockcard-print-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #009957; padding-bottom: 8px; margin-bottom: 12px;">
+      <div>
+        <h2 style="margin: 0; color: #009957; font-size: 16pt; font-weight: 800;">GEZYNE CLINICAL LABORATORY</h2>
+        <div style="font-size: 9pt; color: #475569; margin-top: 2px;">Item Stock Card & Lot Traceability Record (ISO 15189 Audit Trail)</div>
+      </div>
+      <div style="text-align: right; font-size: 8.5pt; color: #475569;">
+        <div><strong>Date Printed:</strong> <%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+        <div><strong>Item SKU:</strong> <%= item.sku %></div>
+      </div>
+    </div>
+  </div>
+
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
     <div>
       <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
@@ -91,6 +164,9 @@
       <a href="/inventory" class="button btn-secondary">
         <i class="fa fa-arrow-left"></i> Inventory List
       </a>
+      <button type="button" class="button btn-secondary" onclick="window.print()">
+        <i class="fa fa-print"></i> Print Stock Card
+      </button>
       <% if (userCanEdit) { %>
         <button type="button" class="button btn-primary" onclick="openReceiveBatchModal()">
           <i class="fa fa-plus"></i> Add <%= isReagentItem ? 'Lot' : 'Supply' %> Stock

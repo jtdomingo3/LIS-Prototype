@@ -153,6 +153,11 @@ const suites = [
     name: 'PhilHealth, Costing & HR Intensive Suite',
     file: 'intensive-philhealth-costing-hr.test.js',
     scope: 'PhilHealth/HMO Tranches & Print, Unit Economics P&L, CSC Form 48 DTR 2-Up Page-Fit'
+  },
+  {
+    name: 'Diagnostic Inventory, Reagents & Equipment Suite',
+    file: 'intensive-inventory-equipment.test.js',
+    scope: 'ISO 15189 Open-Vial Stability, DOH AO 2021-0037 Equipment Registry & Westgard QC'
   }
 ];
 

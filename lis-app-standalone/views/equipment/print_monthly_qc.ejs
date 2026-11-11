@@ -278,7 +278,7 @@
         <td class="meta-label">Laboratory Department:</td>
         <td><%= equipment.department || 'Clinical Chemistry' %></td>
         <td class="meta-label">Evaluation Period:</td>
-        <td><strong><%= monthLabel || new Date().toLocaleString('default', { month: 'long', year: 'numeric' }) %></strong></td>
+        <td><strong><%= (typeof monthLabel !== 'undefined' && monthLabel) ? monthLabel : (typeof month !== 'undefined' && month ? month : new Date().toLocaleString('default', { month: 'long', year: 'numeric' })) %></strong></td>
       </tr>
       <tr>
         <td class="meta-label">Control Material Lot:</td>

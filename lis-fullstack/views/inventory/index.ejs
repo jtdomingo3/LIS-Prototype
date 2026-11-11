@@ -12,6 +12,65 @@
   const isEditable = (typeof canEdit !== 'undefined' && canEdit) || (typeof sessionUser !== 'undefined' && checkInventoryPerm(sessionUser));
 %>
 
+<style>
+  @media print {
+    @page {
+      size: letter landscape;
+      margin: 0.35in;
+    }
+    body {
+      background: #fff !important;
+      color: #000 !important;
+      font-size: 8.5pt !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .sidebar, .top-header, .header, .flash-message, .no-print, .btn, .button,
+    .stats-container, .filter-form, .pagination, .table-pagination,
+    #bulkActions, th:last-child, td:last-child {
+      display: none !important;
+    }
+    .main-content, .card {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      width: 100% !important;
+    }
+    .inventory-print-header {
+      display: block !important;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #009957;
+      padding-bottom: 8px;
+    }
+    .inventory-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      font-size: 8pt !important;
+    }
+    .inventory-table th, .inventory-table td {
+      border: 1px solid #cbd5e1 !important;
+      padding: 4px 6px !important;
+      color: #000 !important;
+    }
+    .inventory-table th {
+      background: #f1f5f9 !important;
+      font-weight: 700 !important;
+    }
+    .badge {
+      border: 1px solid #94a3b8 !important;
+      padding: 1px 4px !important;
+      font-size: 7.5pt !important;
+    }
+  }
+  .inventory-print-header {
+    display: none;
+  }
+</style>
+
 <div class="stats-container">
   <div class="stat-card">
     <h4>Total Supplies & Reagents</h4>
@@ -54,6 +113,9 @@
       <a href="/inventory/export" class="button btn-secondary">
         <i class="fa fa-file-csv"></i> Export CSV
       </a>
+      <button type="button" class="button btn-secondary" onclick="window.print()">
+        <i class="fa fa-print"></i> Print Inventory
+      </button>
     </div>
 
     <div style="display: flex; gap: 10px; align-items: center;">
@@ -103,9 +165,23 @@
     </div>
   </div>
 
+  <!-- Regulatory Print Header -->
+  <div class="inventory-print-header">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #009957; padding-bottom: 8px; margin-bottom: 12px;">
+      <div>
+        <h2 style="margin: 0; color: #009957; font-size: 16pt; font-weight: 800;">GEZYNE CLINICAL LABORATORY</h2>
+        <div style="font-size: 9pt; color: #475569; margin-top: 2px;">Diagnostic Reagent & Laboratory Supply Inventory Registry (ISO 15189 & DOH LTO Compliant)</div>
+      </div>
+      <div style="text-align: right; font-size: 8.5pt; color: #475569;">
+        <div><strong>Date Generated:</strong> <%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></div>
+        <div><strong>Total Supplies & Reagents:</strong> <%= typeof totalItems !== 'undefined' ? totalItems : 0 %></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Inventory Table -->
   <div style="overflow-x: auto;">
-    <table>
+    <table class="inventory-table">
       <thead>
         <tr>
           <th>SKU / REF</th>

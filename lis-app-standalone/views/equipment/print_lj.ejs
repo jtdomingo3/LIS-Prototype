@@ -8,7 +8,11 @@
       size: letter portrait;
       margin: 0.35in;
     }
-    *, *:before, *:after { box-sizing: border-box; }
+    *, *:before, *:after {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     body {
       margin: 0;
       padding: 0;
