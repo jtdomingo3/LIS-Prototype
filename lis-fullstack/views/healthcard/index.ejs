@@ -1,4 +1,45 @@
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; background: #ffffff;">
+  <style>
+    @media print {
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .sidebar, .header, .top-header, .flash-message, .no-print, .btn, .button, form, .pagination, #fullscreenBtn, .hamburger, [onclick*="open"], [onclick*="toggle"] {
+        display: none !important;
+      }
+      .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+      .card {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      table {
+        width: 100% !important;
+        font-size: 8pt !important;
+        border-collapse: collapse !important;
+      }
+      th, td {
+        padding: 3px 5px !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      th:last-child, td:last-child, .action-col {
+        display: none !important;
+      }
+      @page {
+        size: letter landscape;
+        margin: 0.35in;
+      }
+    }
+  </style>
   <!-- Module Tabs: PhilHealth vs Health Card -->
   <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
     <a href="/philhealth" style="padding: 10px 22px; font-weight: 600; font-size: 0.95em; color: #64748b; border-bottom: 3px solid transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; border-radius: 8px 8px 0 0; transition: all 0.15s;" onmouseover="this.style.color='#0284c7'; this.style.background='#f8fafc';" onmouseout="this.style.color='#64748b'; this.style.background='transparent';">
@@ -25,6 +66,9 @@
       </p>
     </div>
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <button type="button" onclick="window.print()" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; cursor: pointer;">
+        <i class="fa fa-print"></i> Print Claims
+      </button>
       <a href="/healthcard/export.csv<%= (searchQuery || hmoFilter || statusFilter || dateFrom || dateTo) ? ('?' + new URLSearchParams({ search: searchQuery, hmo: hmoFilter, status: statusFilter, dateFrom, dateTo }).toString()) : '' %>" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;" title="Download filtered records as CSV">
         <i class="fa fa-file-csv" style="color: #059669;"></i> Export CSV
       </a>
@@ -64,7 +108,7 @@
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 0.5px;">Settled / Paid</div>
       <div style="font-size: 1.8em; font-weight: 800; color: #15803d; margin-top: 4px;">
         <%= stats.paid %>
-        <span style="font-size: 0.45em; background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;">₱<%= stats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
+        <span style="font-size: 0.45em; background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;">₱<%= (stats.totalPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
       </div>
     </div>
   </div>

@@ -6,6 +6,8 @@
                 background: white !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .sidebar, .header, .top-header, .flash-message, .no-print, .btn, #dtrControls, #dtrKpiBar {
                 display: none !important;
@@ -22,31 +24,57 @@
             .ph-dtr-grid {
                 display: flex !important;
                 flex-direction: row !important;
-                justify-content: center !important;
-                gap: 20px !important;
+                justify-content: space-between !important;
+                gap: 12px !important;
                 width: 100% !important;
+                flex-wrap: nowrap !important;
             }
             .ph-dtr-sheet {
+                display: block !important;
                 box-shadow: none !important;
                 border: 1px solid #000 !important;
-                padding: 12px 14px !important;
+                padding: 6px 8px !important;
                 page-break-inside: avoid !important;
-                width: 48% !important;
-                max-width: 48% !important;
+                width: 48.8% !important;
+                max-width: 48.8% !important;
+                box-sizing: border-box !important;
+            }
+            #dtrCopy2 {
+                display: block !important;
             }
             .ph-dtr-table {
-                font-size: 8pt !important;
+                font-size: 7.2pt !important;
+                margin-top: 4px !important;
             }
             .ph-dtr-table th, .ph-dtr-table td {
-                padding: 1px 2px !important;
-                line-height: 1.15 !important;
+                padding: 0.5px 2px !important;
+                height: 15px !important;
+                line-height: 1.1 !important;
             }
             .dashed-row {
                 border-bottom: 1px dashed #000 !important;
             }
+            .dtr-cert-block {
+                margin-top: 6px !important;
+                font-size: 6.8pt !important;
+                line-height: 1.15 !important;
+            }
+            .dtr-cert-p {
+                margin: 0 0 4px 0 !important;
+                text-indent: 14px !important;
+            }
+            .dtr-sig-emp {
+                margin: 10px auto 0 auto !important;
+            }
+            .dtr-verify-block {
+                margin-top: 6px !important;
+            }
+            .dtr-sig-incharge {
+                margin: 10px auto 0 auto !important;
+            }
             @page {
                 size: letter portrait;
-                margin: 0.3in 0.3in 0.3in 0.3in;
+                margin: 0.22in 0.25in;
             }
         }
 
@@ -304,7 +332,17 @@
                     %>
                         <tr class="dashed-row" 
                             <% if (!row.isPastMonthEnd) { %>
-                                onclick="openDtrModal('<%= row.date %>', '<%= r ? r.amIn : '' %>', '<%= r ? r.amOut : '' %>', '<%= r ? r.pmIn : '' %>', '<%= r ? r.pmOut : '' %>', '<%= r && r.notes ? r.notes.replace(/'/g, "\\'") : '' %>', '<%= r && r.isOtApproved ? '1' : '0' %>', '<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>', '<%= r ? r.totalHours : '' %>', '<%= r ? (r.rawTotalHours || r.totalHours) : '' %>')"
+                                data-date="<%= row.date %>"
+                                data-amin="<%= r ? r.amIn : '' %>"
+                                data-amout="<%= r ? r.amOut : '' %>"
+                                data-pmin="<%= r ? r.pmIn : '' %>"
+                                data-pmout="<%= r ? r.pmOut : '' %>"
+                                data-notes="<%= r && r.notes ? r.notes : '' %>"
+                                data-isotapproved="<%= r && r.isOtApproved ? '1' : '0' %>"
+                                data-approvedot="<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>"
+                                data-totalhours="<%= r ? r.totalHours : '' %>"
+                                data-rawhours="<%= r ? (r.rawTotalHours || r.totalHours) : '' %>"
+                                onclick="openDtrModalFromRow(this)"
                                 title="Click to log or correct duty punches for day <%= row.dayNum %>"
                             <% } %>>
                             
@@ -369,6 +407,16 @@
                                 <td class="no-print" style="text-align: center; padding: 0;">
                                     <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
                                 </td>
+                            <% } else if (r && r.notes) { %>
+                                <!-- Note logged (e.g. Leave, Absent, Official Business) -->
+                                <td colspan="4" class="b-double-r" style="text-align: center; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.08em; color: #065f46; background: #ecfdf5;">
+                                    <%= r.notes.toUpperCase() %>
+                                </td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
+                                </td>
                             <% } else { %>
                                 <!-- Weekday with no duty logged yet -->
                                 <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
@@ -401,13 +449,13 @@
             </table>
 
             <!-- Bottom Certification & Signature Lines (Mandatory PH CSC Form 48) -->
-            <div style="margin-top: 14px; font-size: 0.78rem; line-height: 1.35;">
-                <p style="text-align: justify; font-style: italic; margin: 0 0 16px 0; text-indent: 20px;">
+            <div class="dtr-cert-block" style="margin-top: 14px; font-size: 0.78rem; line-height: 1.35;">
+                <p class="dtr-cert-p" style="text-align: justify; font-style: italic; margin: 0 0 16px 0; text-indent: 20px;">
                     I certify on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.
                 </p>
 
                 <!-- Employee Signature Line -->
-                <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                <div class="dtr-sig-emp" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
                     <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
                         <%= employee.name %>
                     </div>
@@ -417,11 +465,11 @@
                 </div>
 
                 <!-- Verification Block -->
-                <div style="margin-top: 18px;">
+                <div class="dtr-verify-block" style="margin-top: 18px;">
                     <div style="font-style: italic; font-size: 0.78rem;">
                         Verified as to the prescribed office hours:
                     </div>
-                    <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                    <div class="dtr-sig-incharge" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
                         <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
                             <%= employee.department === 'Clinical Laboratory' ? 'Pathologist / Laboratory Director' : 'HR Officer / Head of Clinic' %>
                         </div>
@@ -500,7 +548,18 @@
                     %>
                         <tr class="dashed-row" 
                             <% if (!row.isPastMonthEnd) { %>
-                                onclick="openDtrModal('<%= row.date %>', '<%= r ? r.amIn : '' %>', '<%= r ? r.amOut : '' %>', '<%= r ? r.pmIn : '' %>', '<%= r ? r.pmOut : '' %>', '<%= r && r.notes ? r.notes.replace(/'/g, "\\'") : '' %>', '<%= r && r.isOtApproved ? '1' : '0' %>', '<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>', '<%= r ? r.totalHours : '' %>', '<%= r ? (r.rawTotalHours || r.totalHours) : '' %>')"
+                                data-date="<%= row.date %>"
+                                data-amin="<%= r ? r.amIn : '' %>"
+                                data-amout="<%= r ? r.amOut : '' %>"
+                                data-pmin="<%= r ? r.pmIn : '' %>"
+                                data-pmout="<%= r ? r.pmOut : '' %>"
+                                data-notes="<%= r && r.notes ? r.notes : '' %>"
+                                data-isotapproved="<%= r && r.isOtApproved ? '1' : '0' %>"
+                                data-approvedot="<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>"
+                                data-totalhours="<%= r ? r.totalHours : '' %>"
+                                data-rawhours="<%= r ? (r.rawTotalHours || r.totalHours) : '' %>"
+                                onclick="openDtrModalFromRow(this)"
+                                title="Click to log or correct duty punches for day <%= row.dayNum %>"
                             <% } %>>
                             
                             <td class="b-double-r" style="text-align: center; font-weight: 700; <%= row.isWeekend ? 'color: #475569;' : '' %>">
@@ -560,6 +619,15 @@
                                 <td class="no-print" style="text-align: center; padding: 0;">
                                     <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
                                 </td>
+                            <% } else if (r && r.notes) { %>
+                                <td colspan="4" class="b-double-r" style="text-align: center; font-weight: 700; font-size: 0.72rem; letter-spacing: 0.08em; color: #065f46; background: #ecfdf5;">
+                                    <%= r.notes.toUpperCase() %>
+                                </td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #065f46;"><i class="fa fa-pencil"></i></span>
+                                </td>
                             <% } else { %>
                                 <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
                                 <td class="b-double-r" style="text-align: center; color: #94a3b8;"></td>
@@ -590,12 +658,12 @@
             </table>
 
             <!-- Signature Lines -->
-            <div style="margin-top: 14px; font-size: 0.78rem; line-height: 1.35;">
-                <p style="text-align: justify; font-style: italic; margin: 0 0 16px 0; text-indent: 20px;">
+            <div class="dtr-cert-block" style="margin-top: 14px; font-size: 0.78rem; line-height: 1.35;">
+                <p class="dtr-cert-p" style="text-align: justify; font-style: italic; margin: 0 0 16px 0; text-indent: 20px;">
                     I certify on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.
                 </p>
 
-                <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                <div class="dtr-sig-emp" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
                     <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
                         <%= employee.name %>
                     </div>
@@ -604,11 +672,11 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 18px;">
+                <div class="dtr-verify-block" style="margin-top: 18px;">
                     <div style="font-style: italic; font-size: 0.78rem;">
                         Verified as to the prescribed office hours:
                     </div>
-                    <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                    <div class="dtr-sig-incharge" style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
                         <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
                             <%= employee.department === 'Clinical Laboratory' ? 'Pathologist / Laboratory Director' : 'HR Officer / Head of Clinic' %>
                         </div>
@@ -797,6 +865,7 @@ function printPhDtr() {
 }
 
 function openDtrModalFromBtn(btn) {
+    if (!btn) return;
     const date = btn.getAttribute('data-date') || '';
     const amIn = btn.getAttribute('data-amin') || '';
     const amOut = btn.getAttribute('data-amout') || '';
@@ -808,6 +877,11 @@ function openDtrModalFromBtn(btn) {
     const totalHours = btn.getAttribute('data-totalhours') || '';
     const rawHours = btn.getAttribute('data-rawhours') || '';
     openDtrModal(date, amIn, amOut, pmIn, pmOut, notes, isOtApproved, approvedOt, totalHours, rawHours);
+}
+
+function openDtrModalFromRow(row) {
+    if (!row) return;
+    openDtrModalFromBtn(row);
 }
 
 function openDtrModal(date, amIn, amOut, pmIn, pmOut, notes, isOtApproved, approvedOt, totalHours, rawHours) {
@@ -824,11 +898,20 @@ function openDtrModal(date, amIn, amOut, pmIn, pmOut, notes, isOtApproved, appro
 
     const todayStr = new Date().toISOString().slice(0, 10);
     dateInput.value = date || todayStr;
-    // Default to pre-filled 8:00 AM - 12:00 PM, 1:00 PM - 5:00 PM if no punches provided
-    amInInput.value = (amIn !== undefined && amIn !== '') ? amIn : '08:00';
-    amOutInput.value = (amOut !== undefined && amOut !== '') ? amOut : '12:00';
-    pmInInput.value = (pmIn !== undefined && pmIn !== '') ? pmIn : '13:00';
-    pmOutInput.value = (pmOut !== undefined && pmOut !== '') ? pmOut : '17:00';
+
+    // Respect exact punch values passed in (e.g. empty string if unlogged or cleared).
+    // Only default to 08:00 - 17:00 when clicked without a date (fresh manual punch).
+    if (date && (amIn !== undefined && amIn !== null)) {
+        amInInput.value = amIn;
+        amOutInput.value = amOut || '';
+        pmInInput.value = pmIn || '';
+        pmOutInput.value = pmOut || '';
+    } else {
+        amInInput.value = amIn || '08:00';
+        amOutInput.value = amOut || '12:00';
+        pmInInput.value = pmIn || '13:00';
+        pmOutInput.value = pmOut || '17:00';
+    }
     notesInput.value = notes || '';
 
     if (isOtApprovedEl) {
@@ -878,8 +961,22 @@ function recomputeDtrModalHours() {
     const pmIn = timeToMins(document.getElementById('dtrPmIn').value);
     const pmOut = timeToMins(document.getElementById('dtrPmOut').value);
 
-    let amMins = (amIn !== null && amOut !== null && amOut > amIn) ? (amOut - amIn) : 0;
-    let pmMins = (pmIn !== null && pmOut !== null && pmOut > pmIn) ? (pmOut - pmIn) : 0;
+    let amMins = 0;
+    if (amIn !== null && amOut !== null) {
+        amMins = (amOut >= amIn) ? (amOut - amIn) : ((amOut + 1440) - amIn);
+    }
+    let pmMins = 0;
+    if (pmIn !== null && pmOut !== null) {
+        pmMins = (pmOut >= pmIn) ? (pmOut - pmIn) : ((pmOut + 1440) - pmIn);
+    }
+
+    // Support continuous duty if amOut/pmIn are blank but amIn/pmOut are filled
+    if (amMins === 0 && pmMins === 0 && amIn !== null && pmOut !== null) {
+        const span = (pmOut >= amIn) ? (pmOut - amIn) : ((pmOut + 1440) - amIn);
+        const netMinutes = span >= 300 ? Math.max(0, span - 60) : span;
+        amMins = Math.min(240, netMinutes);
+        pmMins = Math.max(0, netMinutes - amMins);
+    }
 
     const totalMinutes = amMins + pmMins;
     const rawTotalHours = Math.round((totalMinutes / 60) * 100) / 100;

@@ -1,4 +1,45 @@
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; background: #ffffff;">
+  <style>
+    @media print {
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .sidebar, .header, .top-header, .flash-message, .no-print, .btn, .button, form, .pagination, #fullscreenBtn, .hamburger, [onclick*="open"], [onclick*="toggle"] {
+        display: none !important;
+      }
+      .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+      }
+      .card {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      table {
+        width: 100% !important;
+        font-size: 8pt !important;
+        border-collapse: collapse !important;
+      }
+      th, td {
+        padding: 3px 5px !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      th:last-child, td:last-child, .action-col {
+        display: none !important;
+      }
+      @page {
+        size: letter landscape;
+        margin: 0.35in;
+      }
+    }
+  </style>
   <!-- Module Tabs: PhilHealth vs Health Card -->
   <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
     <a href="/philhealth" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; color: #0369a1; border-bottom: 3px solid #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; background: #f0f9ff; border-radius: 8px 8px 0 0;">
@@ -25,6 +66,9 @@
       </p>
     </div>
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <button type="button" onclick="window.print()" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; cursor: pointer;">
+        <i class="fa fa-print"></i> Print Registry
+      </button>
       <a href="/philhealth/export.csv<%= (searchQuery || dateFrom || dateTo || statusFilter || tranche1PaidFilter || tranche2PaidFilter) ? ('?' + new URLSearchParams({ search: searchQuery, dateFrom, dateTo, status: statusFilter, tranche1Paid: tranche1PaidFilter, tranche2Paid: tranche2PaidFilter }).toString()) : '' %>" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;" title="Download filtered records as CSV">
         <i class="fa fa-file-csv" style="color: #059669;"></i> Export CSV
       </a>

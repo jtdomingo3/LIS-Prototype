@@ -62,15 +62,24 @@ class DtrRecord {
     let amMins = 0;
     const amStart = timeToMinutes(amIn);
     const amEnd = timeToMinutes(amOut);
-    if (amStart !== null && amEnd !== null && amEnd > amStart) {
-      amMins = amEnd - amStart;
+    if (amStart !== null && amEnd !== null) {
+      amMins = (amEnd >= amStart) ? (amEnd - amStart) : ((amEnd + 1440) - amStart);
     }
 
     let pmMins = 0;
     const pmStart = timeToMinutes(pmIn);
     const pmEnd = timeToMinutes(pmOut);
-    if (pmStart !== null && pmEnd !== null && pmEnd > pmStart) {
-      pmMins = pmEnd - pmStart;
+    if (pmStart !== null && pmEnd !== null) {
+      pmMins = (pmEnd >= pmStart) ? (pmEnd - pmStart) : ((pmEnd + 1440) - pmStart);
+    }
+
+    // Support continuous duty if amOut/pmIn are blank but amIn/pmOut are filled
+    if (amMins === 0 && pmMins === 0 && amStart !== null && pmEnd !== null) {
+      const span = (pmEnd >= amStart) ? (pmEnd - amStart) : ((pmEnd + 1440) - amStart);
+      // If continuous span is 5 hours or more, deduct 1 hour (60 mins) standard meal break
+      const netMinutes = span >= 300 ? Math.max(0, span - 60) : span;
+      amMins = Math.min(240, netMinutes);
+      pmMins = Math.max(0, netMinutes - amMins);
     }
 
     const totalMinutes = amMins + pmMins;

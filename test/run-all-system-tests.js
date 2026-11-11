@@ -148,6 +148,11 @@ const suites = [
     name: 'KaTeX Formula & Mathematical Rendering Suite',
     file: 'katex-render.test.js',
     scope: 'Display LaTeX Math, Inline Math Formats, Single Dollar Currency Isolation'
+  },
+  {
+    name: 'PhilHealth, Costing & HR Intensive Suite',
+    file: 'intensive-philhealth-costing-hr.test.js',
+    scope: 'PhilHealth/HMO Tranches & Print, Unit Economics P&L, CSC Form 48 DTR 2-Up Page-Fit'
   }
 ];
 
