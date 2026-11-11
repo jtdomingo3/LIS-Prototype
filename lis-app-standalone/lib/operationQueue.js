@@ -279,7 +279,7 @@ class OperationQueue {
             const it = items[i];
             if (!it) continue;
             try {
-              if (it.id === oldId) {
+              if (it.id === oldId || it._id === oldId) {
                 if (ds.db) {
                   if (name === 'patients' && ds.db.deletePatient) ds.db.deletePatient(oldId);
                   else if (name === 'tests' && ds.db.deleteTest) ds.db.deleteTest(oldId);
@@ -287,6 +287,7 @@ class OperationQueue {
                   else if (name === 'templates' && ds.db.deleteTemplate) ds.db.deleteTemplate(oldId);
                 }
                 it.id = newId;
+                if (it._id !== undefined) it._id = newId;
                 collChanged = true;
               }
               // For tests, update patient references

@@ -359,7 +359,7 @@ async function processMaintenanceFlags() {
   try {
     const { runDiskHygiene } = require('./lib/diskCleaner');
     const hygieneResult = runDiskHygiene({ dataDir: DATA_DIR });
-    console.log(`[server] Disk hygiene completed: ${hygieneResult.backupsRemoved} old backups pruned, ${hygieneResult.filesCleaned} temp files cleaned, freed ${(hygieneResult.totalBytesFreed / (1024 * 1024)).toFixed(2)} MB`);
+    console.log(`[server] Disk hygiene completed: ${hygieneResult.backupsPruned || 0} old backups pruned, ${hygieneResult.staleCleaned || 0} temp files cleaned, freed ${((hygieneResult.totalBytesFreed || 0) / (1024 * 1024)).toFixed(2)} MB`);
     
     // Schedule periodic hygiene every 24 hours
     setInterval(() => {
