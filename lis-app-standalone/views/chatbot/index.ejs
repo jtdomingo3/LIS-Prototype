@@ -167,7 +167,7 @@
                     <div class="main-msg main-msg-<%= msg.role === 'user' ? 'user' : 'bot' %>">
                         <div class="main-bubble">
                             <div class="bubble-header">
-                                <strong><%= msg.role === 'user' ? (sessionUser ? sessionUser.name : 'You') : 'GezyneBot' %></strong>
+                                <strong><%= msg.role === 'user' ? ((typeof sessionUser !== 'undefined' && sessionUser) ? sessionUser.name : 'You') : 'GezyneBot' %></strong>
                                 <% const wsList = (msg.sources || []).filter(s => s && s.url); %>
                                 <% if (wsList.length > 0) { %>
                                     <span class="badge-web-pill" title="Augmented with live web search citations"><i class="fa fa-globe"></i> Web Cited</span>
@@ -1525,7 +1525,7 @@ function initChatbot() {
         msgDiv.className = `main-msg main-msg-${role}`;
 
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const nameStr = role === 'user' ? '<%= sessionUser ? sessionUser.name : "You" %>' : 'GezyneBot';
+        const nameStr = role === 'user' ? '<%= (typeof sessionUser !== "undefined" && sessionUser) ? sessionUser.name : "You" %>' : 'GezyneBot';
         const ragPill = (role === 'bot' && metadata && metadata.ragUsed)
             ? `<span class="badge-rag-pill" title="Augmented with ${metadata.ragChunks || 4} chunks from ChromaDB Vector Store"><i class="fa fa-database"></i> RAG Verified</span>`
             : '';

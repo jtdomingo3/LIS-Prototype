@@ -158,6 +158,11 @@ const suites = [
     name: 'Diagnostic Inventory, Reagents & Equipment Suite',
     file: 'intensive-inventory-equipment.test.js',
     scope: 'ISO 15189 Open-Vial Stability, DOH AO 2021-0037 Equipment Registry & Westgard QC'
+  },
+  {
+    name: 'Settings & GezyneBot Intensive Suite',
+    file: 'intensive-settings-gezynebot.test.js',
+    scope: 'Facility Settings, SSE, Printer, 60-Day Backup Retention, OpenRouter Encryption, 16-Chapter GezyneBot'
   }
 ];
 
