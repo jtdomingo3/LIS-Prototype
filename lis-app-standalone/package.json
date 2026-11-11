@@ -60,6 +60,7 @@
     "build": {
         "appId": "com.gezyne.lis-standalone",
         "productName": "Gezyne LIS",
+        "npmRebuild": false,
         "directories": {
             "buildResources": "build",
             "output": "dist"

@@ -27,6 +27,7 @@
     "build": {
         "appId": "com.gezyne.lis-server",
         "productName": "Gezyne LIS Server",
+        "npmRebuild": false,
         "directories": {
             "buildResources": "build",
             "output": "dist"
