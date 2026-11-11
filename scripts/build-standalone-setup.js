@@ -4,7 +4,7 @@
  * ============================================================================
  * 
  * End-to-end automated Windows installer compilation pipeline for Standalone App:
- * 1. Pre-Build Gate: Runs all 22 system tests + security audit (abort on error).
+ * 1. Pre-Build Gate: Runs all 25 system tests + security audit (abort on error).
  * 2. Purge Stale Binaries: Cleans previous standalone setup EXEs in dist/.
  * 3. Metadata Stamping: Injects Git commit SHA, branch, v3.1.0, builder entity.
  * 4. Prepare Dist Data: Prepares seed resources for client packaging.
